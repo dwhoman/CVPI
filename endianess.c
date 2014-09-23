@@ -1,4 +1,4 @@
-/* 15th bit of AIRCR indicates the endianness: 0 = little, 1 = big */
+/* ARM cpu is bi-endian depending on OS compilation, check */
 #include <stdio.h>
 #include <endian.h>
 

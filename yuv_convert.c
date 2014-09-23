@@ -26,37 +26,13 @@
 #include <stdlib.h>
 #endif
 
+#ifndef _UNISTD_H
 #include <unistd.h>
-/* getopt */
+#endif
 
-#define COLOR_SPACE VG_sARGB_8888
-#define OUTPUT_LINEAR VG_FALSE
+#include "image_functions.h"
 
-//const VGubyte ones_array[256] = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
-
-//const VGubyte zeros_array[256] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-
-const VGubyte two_55_array[256] = {255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255,255};
-
-const VGubyte identity_array[256] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,249,250,251,252,253,254,255};
-
-const VGfloat conversion_1[20] = {
-  0,0,0,1,
-  0,1,0,0,
-  0,0,1,0,
-  1,0,0,0,
-
-  0,0,0,0
-};
-
-const VGfloat conversion_2[20] = {
-  0,0,1,0,
-  0,1,0,0,
-  0,0,0,1,
-  1,0,0,0,
-  
-  0,0,0,0
-};
+#define TEST_COLOR_SPACE VG_sARGB_8888
 
 static const pixel_format bmp_VG_sARGB_8888 = {4,
 					      0xFF000000,
@@ -71,7 +47,7 @@ static const pixel_format bmp_VG_sARGB_8888 = {4,
 					       LCS_sRGB};
 
 int main(int argc, char** argv) {
-  if(argc < 5) {
+  if(argc < 7) {
     printf("Too few arguments.\n");
     return 1;
   }
@@ -84,27 +60,49 @@ int main(int argc, char** argv) {
     printf("Invalid height\n");
     return 2;
   }  
-  int rgb_width = atoi(argv[argc-4]); 
-  if(rgb_width <= 0) {
+  int yuva_width = atoi(argv[argc-4]); 
+  if(yuva_width <= 0) {
     printf("Invalid width\n");
     return 3;
-  }  
-  int yuyv_width = rgb_width/2;
-  int rgb_stride = rgb_width*4;
-  int yuyv_stride = rgb_width*2;
+  }
 
-  int itter;
+  char* out_type = argv[argc-5];
+  char* in_type = argv[argc-6];
+  /* yuyv -> yuva */
+  /* yuyv -> rgba */
+  /* yuva -> rgba */
+  /* rgba -> bmp add header */
+  /* bmp -> rgba remove header */
+  /* yuva -> bmp add header */
+  /* bmp -> yuva remove header */
 
   int bmp_p = 0;
-  while ((itter = getopt(argc, argv, "b")) != -1) {
+  int itter = 0;
+  while ((itter = getopt(argc, argv, "bscgCB:")) != -1) {
     switch(itter) {
     case 'b':			/* add bitmap V4 header */
       bmp_p = 1;
+      break;
+    case 's':			/* Sobel */
+      break;
+    case 'c':			/* Canny */
+      break;
+    case 'g':			/* Gaussian */
+      break;
+    case 'C':			/* Corner */
+      break;
+    case 'B':			/* box K argument */
       break;
     default:
       break;
     }
   }
+
+  
+
+  int yuyv_width = yuva_width/2;
+  int yuva_stride = yuva_width*4;
+  int yuyv_stride = yuva_width*2;
 
   fseek(input, 0L, SEEK_END);
   int f_size = ftell(input);		/* file size */
@@ -114,6 +112,8 @@ int main(int argc, char** argv) {
   void* image_out = malloc(2*f_size);
 
   fread(image_in, 1, f_size, input);
+  unsigned long * pointer = image_in;
+  printf("0x%X 0x%X\n", *pointer, *(pointer+1));
 
   change_renderable_api(egl_renderable_api_openvg);
   change_buffer_size(32);
@@ -122,115 +122,28 @@ int main(int argc, char** argv) {
   change_blue_size(8);
   change_alpha_size(8);
   egl_deletable* takedown;
-  takedown = setupEGL(rgb_width, height, rgb_stride, EGL_PIXEL_FORMAT_ARGB_8888_BRCM, 0);  
+  takedown = setupEGL(yuva_width, height, yuva_stride, EGL_PIXEL_FORMAT_ARGB_8888_BRCM, 0);  
 
   if(takedown == NULL) {
     printf("setupEGL returned NULL pointer \n");
     goto skip_vg;
   }
 
-  VGImage input_image_1 = vgCreateImage(COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-  VGImage input_image_2 = vgCreateImage(COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-  VGImage mod_image_1 = vgCreateImage(COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-  VGImage mod_image_2 = vgCreateImage(COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
+  VGImage input_image = vgCreateImage(TEST_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
 
-  //printf("created initial VGImages\n");
-
-  vgImageSubData(input_image_1, image_in, yuyv_stride, COLOR_SPACE, 0, 0, yuyv_width, height);
-  vgImageSubData(input_image_2, image_in, yuyv_stride, COLOR_SPACE, 0, 0, yuyv_width, height);
+  vgImageSubData(input_image, image_in, yuyv_stride, TEST_COLOR_SPACE, 0, 0, yuyv_width, height);
   vgFinish();
-  //printf("Got image data\n");
-
-  /* intermediate output */
-  /* FILE * input_check_1 = fopen("/home/pi/egl_openvg/yuv_test/input_image_1", "w"); */
-  /* FILE * input_check_2 = fopen("/home/pi/egl_openvg/yuv_test/input_image_2", "w"); */
-  /* void * input_check_1_m = malloc(f_size); */
-  /* void * input_check_2_m = malloc(f_size); */
-  /* printf("back to memory 0\n"); */
-  /* vgGetImageSubData(input_image_1, input_check_1_m, yuyv_stride, COLOR_SPACE, 0, 0, yuyv_width, height); */
-  /* printf("back to memory 1\n"); */
-  /* vgGetImageSubData(input_image_2, input_check_2_m, yuyv_stride, COLOR_SPACE, 0, 0, yuyv_width, height); */
-  /* printf("back to memory 2\n"); */
-  /* vgFinish(); */
-  /* printf("back to memory 3\n"); */
-  /* fwrite(input_check_1_m, 1, f_size, input_check_1); */
-  /* fflush(input_check_1); */
-  /* fwrite(input_check_2_m, 1, f_size, input_check_2); */
-  /* fflush(input_check_2); */
-  /* fclose(input_check_1); */
-  /* fclose(input_check_2); */
-  /* printf("created intermediate output\n"); */
-
-  /* set blue in ARGB to 1 */
-  vgLookup(mod_image_2, input_image_2, identity_array, identity_array, two_55_array, identity_array, OUTPUT_LINEAR, VG_FALSE);
-  /* set red in ARGB to 1 */
-  vgLookup(mod_image_1, input_image_1, two_55_array, identity_array, identity_array, identity_array, OUTPUT_LINEAR, VG_FALSE);
+  VGImage output_image = yuyv2yuva(input_image);
   vgFinish();
+  vgDestroyImage(input_image);
 
-  /* intermediate output */
-  /* input_check_1 = fopen("/home/pi/egl_openvg/yuv_test/mod_image_1", "w"); */
-  /* input_check_2 = fopen("/home/pi/egl_openvg/yuv_test/mod_image_2", "w"); */
-  /* printf("back to memory 0\n"); */
-  /* vgGetImageSubData(mod_image_1, input_check_1_m, yuyv_stride, COLOR_SPACE, 0, 0, yuyv_width, height); */
-  /* printf("back to memory 1\n"); */
-  /* vgGetImageSubData(mod_image_2, input_check_2_m, yuyv_stride, COLOR_SPACE, 0, 0, yuyv_width, height); */
-  /* printf("back to memory 2\n"); */
-  /* vgFinish(); */
-  /* printf("back to memory 3\n"); */
-  /* fwrite(input_check_1_m, 1, f_size, input_check_1); */
-  /* fflush(input_check_1); */
-  /* fwrite(input_check_2_m, 1, f_size, input_check_2); */
-  /* fflush(input_check_2); */
-  /* fclose(input_check_1); */
-  /* fclose(input_check_2); */
-  /* printf("created intermediate output\n"); */
-
-  /* reuse input images */
-
-  vgColorMatrix(input_image_1, mod_image_1, conversion_1);
-  vgColorMatrix(input_image_2, mod_image_2, conversion_2);
-  vgFinish();
-
-  /* intermediate output */
-  /* input_check_1 = fopen("/home/pi/egl_openvg/yuv_test/input_image_1a", "w"); */
-  /* input_check_2 = fopen("/home/pi/egl_openvg/yuv_test/input_image_2a", "w"); */
-  /* printf("back to memory 0\n"); */
-  /* vgGetImageSubData(input_image_1, input_check_1_m, yuyv_stride, COLOR_SPACE, 0, 0, yuyv_width, height); */
-  /* printf("back to memory 1\n"); */
-  /* vgGetImageSubData(input_image_2, input_check_2_m, yuyv_stride, COLOR_SPACE, 0, 0, yuyv_width, height); */
-  /* printf("back to memory 2\n"); */
-  /* vgFinish(); */
-  /* printf("back to memory 3\n"); */
-  /* fwrite(input_check_1_m, 1, f_size, input_check_1); */
-  /* fflush(input_check_1); */
-  /* fwrite(input_check_2_m, 1, f_size, input_check_2); */
-  /* fflush(input_check_2); */
-  /* fclose(input_check_1); */
-  /* fclose(input_check_2); */
-  /* printf("created intermediate output\n"); */
-
-  /* mod images no longer needed */
-  vgDestroyImage(mod_image_1);
-  vgDestroyImage(mod_image_2);
-
-  VGImage output_image = vgCreateImage(COLOR_SPACE, rgb_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
-  /* merge input images */
-  for(itter = 0; itter < yuyv_width; ++itter) {
-    vgCopyImage(output_image, itter*2, 0, input_image_1, itter, 0, 1, height, VG_FALSE);
-    vgCopyImage(output_image, itter*2+1, 0, input_image_2, itter, 0, 1, height, VG_FALSE);
-    vgFinish();
-  }
-  vgDestroyImage(input_image_1);
-  vgDestroyImage(input_image_2);
-  /* zero the alpha channel */
-  vgGetImageSubData(output_image, image_out, rgb_stride, COLOR_SPACE, 0, 0, rgb_width, height);
+  vgGetImageSubData(output_image, image_out, yuva_stride, TEST_COLOR_SPACE, 0, 0, yuva_width, height);
   vgFinish();
 
   vgDestroyImage(output_image);
 
   if(bmp_p) {
-    BITMAPHEADER* header = createBMPHeader(rgb_width, height, 90, &bmp_VG_sARGB_8888);
+    BITMAPHEADER* header = createBMPHeader(yuva_width, height, 90, &bmp_VG_sARGB_8888);
     writeBMPHeader(header, output);
     free(header);
   }

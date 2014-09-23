@@ -1,8 +1,12 @@
-#ifndef VG_CONFIG
-#include "vgConfig.h"
+#ifndef CVPI_VG_EXT
+#include "cvpi_vg_ext.h"
 #endif
 
-char* vgErrorString(unsigned long error) {
+#ifndef _OPENVG_H
+#include <VG/openvg.h>
+#endif
+
+char* cvpi_vg_error_string(unsigned long error) {
   switch(error) {
   case VG_NO_ERROR:
     return " VG_NO_ERROR ";

@@ -1,30 +1,53 @@
-#ifndef EGL_GENERATED_CONFIG_HEADER_H
-#include "eglGeneratedConfigHeader.h"
+#ifndef __egl_h_
+#include <EGL/egl.h>
+/* functions */
+/* eglGetDisplay */
+
+/* variables */
+/* EGL_SUCCESS, ... */
 #endif
 
-
-#ifndef EGL_CONFIG
-#include "eglConfig.h"
+#ifndef __eglplatform_h_
+#include <EGL/eglplatform.h>
 #endif
 
 #ifndef EGLEXT_BRCM_H
-#include "eglext_brcm.h"
+#include <eglext_brcm.h>
 #endif
 
-#ifndef transConfig_h
-#include "transConfig.h"
+#ifndef _STDIO_H
+#include <stdio.h>
+#endif
+/* functions */
+/* printf */
+/* fprintf */
+#ifndef BCM_HOST_H
+#include <bcm_host.h>
+#endif
+/* functions */
+/* bcm_host_init */
+
+/* variables */
+/*  */
+
+#ifndef CVPI_EGL_CONFIG
+#include "cvpi_egl_config.h"
 #endif
 
-/* used by setupEGLFull subroutine eglChooseConfig. Ordering must
-   correspond to the EGL_CONFIG struct in
-   eglGeneratedConfigHeader.h */
-const EGLint egl_settings_names[] = {EGL_BUFFER_SIZE, EGL_RED_SIZE, EGL_GREEN_SIZE, EGL_BLUE_SIZE, EGL_LUMINANCE_SIZE, EGL_ALPHA_SIZE, EGL_ALPHA_MASK_SIZE, EGL_CONFIG_ID, EGL_DEPTH_SIZE, EGL_LEVEL, EGL_MAX_PBUFFER_WIDTH, EGL_MAX_PBUFFER_HEIGHT, EGL_MAX_PBUFFER_PIXELS, EGL_MAX_SWAP_INTERVAL, EGL_MIN_SWAP_INTERVAL, EGL_NATIVE_VISUAL_ID, EGL_NATIVE_VISUAL_TYPE, EGL_SAMPLE_BUFFERS, EGL_SAMPLES, EGL_STENCIL_SIZE, EGL_TRANSPARENT_RED_VALUE, EGL_TRANSPARENT_GREEN_VALUE, EGL_TRANSPARENT_BLUE_VALUE, EGL_BIND_TO_TEXTURE_RGB, EGL_BIND_TO_TEXTURE_RGBA, EGL_NATIVE_RENDERABLE, EGL_SURFACE_TYPE, EGL_RENDERABLE_TYPE, EGL_TRANSPARENT_TYPE, EGL_COLOR_BUFFER_TYPE, EGL_CONFIG_CAVEAT};
+#ifndef CVPI_BASE
+#include "cvpi_base.h"
+#endif
+
+#define CVPI_EGL_VERSION_MAJOR 1
+#define CVPI_EGL_VERSION_MINOR 4
 
 /* used for printing error conditions */
-char* eglErrorString(EGLint error) {
+/* from section 3.1 in the EGL spec */
+char* cvpi_egl_error_string(EGLint error) {
+  char* error_str;
   switch(error) {
   case EGL_SUCCESS:
-    return " succeeded ";
+    return " EGL_SUCCESS ";
   case EGL_NOT_INITIALIZED:
     return " EGL_NOT_INITIALIZED ";
   case EGL_BAD_ACCESS:
@@ -52,36 +75,109 @@ char* eglErrorString(EGLint error) {
   case EGL_BAD_NATIVE_WINDOW:
     return " EGL_BAD_NATIVE_WINDOW ";
   case EGL_CONTEXT_LOST:
-    return" EGL_CONTEXT_LOST ";
+    return " EGL_CONTEXT_LOST ";
   default:
-    return " undefined error ";
+    sprintf(error_str, " undefined error %d ", error);
+    return error_str;
   }
 }
 
-/* setup EGL
-
-   parameters
-   width, height :: egl canvas width and height in pixels
-   display_id :: parameter for eglGetDisplay, if 0 then EGL_DEFAULT_DISPLAY is used
-
-   parameters set in headers
-   pixel format set in transConfig.h
-   configuration settings struct EGL_CONFIG set in eglConfig.h
-
-   on success the function returns a pointer to an egl_deletable
-   struct, which should be passed to takedownEGL to take down the EGL session.
-
-   if unsuccessful, what has been setup by the function will be taken
-   down and a NULL pointer will be returned
- */
-void* setupEGL(EGLint width, EGLint height, NativeDisplayType display_id) {
-  egl_deletable* deletable = malloc(sizeof(egl_deletable));
-
-  if(!display_id) {
-    deletable->display_id = EGL_DEFAULT_DISPLAY;
-  } else {
-    memcpy(&(deletable->display_id), &(display_id), sizeof(display_id));
+/* based on code from egl_brcm_global_image_client.c */
+EGLint cvpi_egl_bytes_per_pixel(enum cvpi_egl_pixel_format pixel_format) {
+  switch(pixel_format) {
+   case EGL_PIXEL_FORMAT_ARGB_8888_BRCM:     return 4;
+   case EGL_PIXEL_FORMAT_A_8_BRCM:           return 1;
+   case EGL_PIXEL_FORMAT_ARGB_8888_PRE_BRCM: return 4;
+   case EGL_PIXEL_FORMAT_XRGB_8888_BRCM:     return 4;
+   case EGL_PIXEL_FORMAT_RGB_565_BRCM:       return 2;
+   default:                                  return 0; /* invalid */
   }
+}
+
+cvpi_egl_settings cvpi_egl_settings_create(void) {
+  cvpi_egl_settings egl_settings_p = malloc(sizeof(*egl_settings_p));
+
+  egl_settings_p->width = EGL_CONFIG_MAX_WIDTH;
+  egl_settings_p->height = EGL_CONFIG_MAX_HEIGHT;
+  egl_settings_p->current_surface_type = cvpi_egl_surface_type_none;
+  egl_settings_p->surface_pixmap_create_function = NULL;
+  egl_settings_p->surface_window_create_function = NULL;
+  egl_settings_p->surface_pixmap_destroy_function = NULL;
+  egl_settings_p->surface_window_destroy_function = NULL;
+  egl_settings_p->pixel_format = CVPI_EGL_DEFAULT_PIXEL_FORMAT;
+  egl_settings_p->pixel_format_brcm = cvpi_egl_pixel_format_brcm_none;
+    /* cvpi_egl_pixel_format_gles2_texture_brcm| */
+    /* cvpi_egl_pixel_format_gles_texture_brcm | */
+    /* cvpi_egl_pixel_format_render_gles2_brcm | */
+    /* cvpi_egl_pixel_format_render_gles_brcm  | */
+    /* cvpi_egl_pixel_format_render_gl_brcm    | */
+    /* cvpi_egl_pixel_format_render_mask_brcm  | */
+    /* cvpi_egl_pixel_format_render_vg_brcm    | */
+    /* cvpi_egl_pixel_format_texture_mask_brcm | */
+    /* cvpi_egl_pixel_format_usage_mask_brcm   | */
+    /* cvpi_egl_pixel_format_vg_image_brcm     ; */
+  egl_settings_p->display_id = EGL_DEFAULT_DISPLAY;
+  egl_settings_p->buffer_size = EGL_DONT_CARE;
+  egl_settings_p->red_size = EGL_DONT_CARE;
+  egl_settings_p->green_size = EGL_DONT_CARE;
+  egl_settings_p->blue_size = EGL_DONT_CARE;
+  egl_settings_p->luminance_size = EGL_DONT_CARE;
+  egl_settings_p->alpha_size = EGL_DONT_CARE;
+  egl_settings_p->alpha_mask_size = EGL_DONT_CARE;
+  egl_settings_p->config_id = EGL_DONT_CARE;
+  egl_settings_p->conformant = EGL_DONT_CARE;
+  egl_settings_p->depth_size = EGL_DONT_CARE;
+  egl_settings_p->level = 0;
+  egl_settings_p->max_pbuffer_width = EGL_DONT_CARE;
+  egl_settings_p->max_pbuffer_height = EGL_DONT_CARE;
+  egl_settings_p->max_pbuffer_pixels = EGL_DONT_CARE;
+  egl_settings_p->max_swap_interval = EGL_DONT_CARE;
+  egl_settings_p->min_swap_interval = EGL_DONT_CARE;
+  egl_settings_p->native_visual_id = EGL_DONT_CARE;
+  egl_settings_p->native_visual_type = EGL_DONT_CARE;
+  egl_settings_p->sample_buffers = EGL_DONT_CARE;
+  egl_settings_p->samples = cvpi_egl_samples_one;
+  egl_settings_p->stencil_size = EGL_DONT_CARE;
+  egl_settings_p->transparent_red_value = EGL_DONT_CARE;
+  egl_settings_p->transparent_green_value = EGL_DONT_CARE;
+  egl_settings_p->transparent_blue_value = EGL_DONT_CARE;
+  egl_settings_p->bind_to_texture_rgb = EGL_DONT_CARE;
+  egl_settings_p->bind_to_texture_rgba = EGL_DONT_CARE;
+  egl_settings_p->native_renderable = CVPI_EGL_TRUE;
+  egl_settings_p->surface_type = EGL_PBUFFER_BIT|EGL_VG_ALPHA_FORMAT_PRE_BIT|EGL_SWAP_BEHAVIOR_PRESERVED_BIT|EGL_VG_COLORSPACE_LINEAR_BIT;
+  egl_settings_p->renderable_type = EGL_OPENVG_BIT;
+  egl_settings_p->transparent_type = cvpi_egl_transparent_type_none;
+  egl_settings_p->color_buffer_type = cvpi_egl_color_buffer_type_rgb;
+  egl_settings_p->config_caveat = cvpi_egl_config_caveat_none;
+  egl_settings_p->renderable_api = cvpi_egl_renderable_api_openvg;
+  egl_settings_p->pixmap_surface_attrib_list = NULL;
+  egl_settings_p->pbuffer_surface_attrib_list = NULL;
+  egl_settings_p->window_surface_attrib_list = NULL;
+  egl_settings_p->context_attrib_list = NULL;
+  egl_settings_p->match_native_pixmap = EGL_DONT_CARE;
+  /* section 3.4.1 in 1.4 Spec says that this isn't a valid value for
+     EGL_MATCH_NATIVE_PIXMAP, but see comment on line 165 in
+     userland/interface/khronos/egl/egl_client_config_cr.c */
+
+  return egl_settings_p;
+}
+
+cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
+  cvpi_egl_instance egl_instance = malloc(sizeof(*egl_instance));
+  egl_instance->egl_settings = egl_settings_p;
+
+  /* tests needed in multiple places */
+  /* if changed, also change in cvpi_egl_instance_takedown */
+  char pixmap_surface_bool = (egl_settings_p->surface_type & EGL_PIXMAP_BIT ||
+      egl_settings_p->current_surface_type == cvpi_egl_surface_type_pixmap) && 
+     egl_settings_p->surface_pixmap_create_function != NULL &&
+     egl_settings_p->surface_pixmap_destroy_function != NULL;
+  char window_surface_bool = (egl_settings_p->surface_type & EGL_WINDOW_BIT ||
+      egl_settings_p->current_surface_type == cvpi_egl_surface_type_window) &&
+     egl_settings_p->surface_pixmap_destroy_function != NULL &&
+     egl_settings_p->surface_window_destroy_function != NULL;
+  char pbuffer_surface_bool = egl_settings_p->surface_type & EGL_PBUFFER_BIT || 
+    egl_settings_p->current_surface_type == cvpi_egl_surface_type_pbuffer;
 
   /* Used to capture egl succeed/fail return values */
   EGLBoolean good = EGL_TRUE;
@@ -90,273 +186,829 @@ void* setupEGL(EGLint width, EGLint height, NativeDisplayType display_id) {
   bcm_host_init();
 
   /* get the display matching display_id */
-  /* possible values does not appear to be documented and is probably implementation specific */
-  deletable->eglDisplay = eglGetDisplay(deletable->display_id);
-  if(EGL_NO_DISPLAY == deletable->eglDisplay) {
-    fprintf(stderr, "eglGetDisplay returned EGL_NO_DISPLAY\n");
+  /* Possible values does not appear to be documented and is probably
+     implementation specific. */
+  /* Broadcom's implementation only supports one value, the default. */
+  egl_instance->eglDisplay = eglGetDisplay(egl_settings_p->display_id);
+  if(EGL_NO_DISPLAY == egl_instance->eglDisplay) {
+    fprintf(stderr, "%s: eglGetDisplay returned EGL_NO_DISPLAY\n", __func__);
     goto undoBase;
   }
 
+  /* see egl.h header */
+  egl_instance->major = CVPI_EGL_VERSION_MAJOR;
+  egl_instance->minor = CVPI_EGL_VERSION_MINOR;
   /* initialize the display */
-  good = eglInitialize(deletable->eglDisplay, &(deletable->major), &(deletable->minor));
+  good = eglInitialize(egl_instance->eglDisplay, &(egl_instance->major), &(egl_instance->minor));
   if(EGL_TRUE != good) {
-    fprintf(stderr, "eglInitialize returned %s\n", eglErrorString(good));
+    fprintf(stderr, "%s: eglInitialize returned %s\n", __func__, cvpi_egl_error_string(good));
     goto undoBase;
   }
 
   /* set API to EGL_OPENVG_API or EGL_OPENGL_ES_API */
-  good = eglBindAPI(EGL_CONFIG.renderable_api);
+  good = eglBindAPI(egl_settings_p->renderable_api);
   if(EGL_TRUE != good) {
-    fprintf(stderr, "eglBindAPI returned %s\n", eglErrorString(good));
+    fprintf(stderr, "%s: eglBindAPI opengl returned %s\n", __func__, cvpi_egl_error_string(good));
     goto undoInitialize;
   }
 
   /* create an EGLConfig */
-  (deletable->attrib_list)[0] = egl_settings_names[0];
-  (deletable->attrib_list)[1] = EGL_CONFIG.buffer_size;  
-  (deletable->attrib_list)[2] = egl_settings_names[1];
-  (deletable->attrib_list)[3] = EGL_CONFIG.red_size;
-  (deletable->attrib_list)[4] = egl_settings_names[2];
-  (deletable->attrib_list)[5] = EGL_CONFIG.green_size;
-  (deletable->attrib_list)[6] = egl_settings_names[3];
-  (deletable->attrib_list)[7] = EGL_CONFIG.blue_size;
-  (deletable->attrib_list)[8] = egl_settings_names[4];
-  (deletable->attrib_list)[9] = EGL_CONFIG.luminance_size;
-  (deletable->attrib_list)[10] = egl_settings_names[5];
-  (deletable->attrib_list)[11] = EGL_CONFIG.alpha_size;
-  (deletable->attrib_list)[12] = egl_settings_names[6];
-  (deletable->attrib_list)[13] = EGL_CONFIG.alpha_mask_size;
-  (deletable->attrib_list)[14] = egl_settings_names[7];
-  (deletable->attrib_list)[15] = EGL_CONFIG.config_id;
-  (deletable->attrib_list)[16] = egl_settings_names[8];
-  (deletable->attrib_list)[17] = EGL_CONFIG.depth_size;
-  (deletable->attrib_list)[18] = egl_settings_names[9];
-  (deletable->attrib_list)[19] = EGL_CONFIG.level;
-  (deletable->attrib_list)[20] = egl_settings_names[10];
-  (deletable->attrib_list)[21] = EGL_CONFIG.max_pbuffer_width;
-  (deletable->attrib_list)[22] = egl_settings_names[11];
-  (deletable->attrib_list)[23] = EGL_CONFIG.max_pbuffer_height;
-  (deletable->attrib_list)[24] = egl_settings_names[12];
-  (deletable->attrib_list)[25] = EGL_CONFIG.max_pbuffer_pixels;
-  (deletable->attrib_list)[26] = egl_settings_names[13];
-  (deletable->attrib_list)[27] = EGL_CONFIG.max_swap_interval;
-  (deletable->attrib_list)[28] = egl_settings_names[14];
-  (deletable->attrib_list)[29] = EGL_CONFIG.min_swap_interval;
-  (deletable->attrib_list)[30] = egl_settings_names[15];
-  (deletable->attrib_list)[31] = EGL_CONFIG.native_visual_id;
-  (deletable->attrib_list)[32] = egl_settings_names[16];
-  (deletable->attrib_list)[33] = EGL_CONFIG.native_visual_type;
-  (deletable->attrib_list)[34] = egl_settings_names[17];
-  (deletable->attrib_list)[35] = EGL_CONFIG.sample_buffers;
-  (deletable->attrib_list)[36] = egl_settings_names[18];
-  (deletable->attrib_list)[37] = EGL_CONFIG.samples;
-  (deletable->attrib_list)[38] = egl_settings_names[19];
-  (deletable->attrib_list)[39] = EGL_CONFIG.stencil_size;
-  (deletable->attrib_list)[40] = egl_settings_names[20];
-  (deletable->attrib_list)[41] = EGL_CONFIG.transparent_red_value;
-  (deletable->attrib_list)[42] = egl_settings_names[21];
-  (deletable->attrib_list)[43] = EGL_CONFIG.transparent_green_value;
-  (deletable->attrib_list)[44] = egl_settings_names[22];
-  (deletable->attrib_list)[45] = EGL_CONFIG.transparent_blue_value;
-  (deletable->attrib_list)[46] = egl_settings_names[23];
-  (deletable->attrib_list)[47] = EGL_CONFIG.bind_to_texture_rgb;
-  (deletable->attrib_list)[48] = egl_settings_names[24];
-  (deletable->attrib_list)[49] = EGL_CONFIG.bind_to_texture_rgba;
-  (deletable->attrib_list)[50] = egl_settings_names[25];
-  (deletable->attrib_list)[51] = EGL_CONFIG.native_renderable;
-  (deletable->attrib_list)[52] = egl_settings_names[26];
-  (deletable->attrib_list)[53] = EGL_CONFIG.surface_type;
-  (deletable->attrib_list)[54] = egl_settings_names[27];
-  (deletable->attrib_list)[55] = EGL_CONFIG.renderable_type;
-  (deletable->attrib_list)[56] = egl_settings_names[28];
-  (deletable->attrib_list)[57] = EGL_CONFIG.transparent_type;
-  (deletable->attrib_list)[58] = egl_settings_names[29];
-  (deletable->attrib_list)[59] = EGL_CONFIG.color_buffer_type;
-  (deletable->attrib_list)[60] = egl_settings_names[30];
-  (deletable->attrib_list)[61] = EGL_CONFIG.config_caveat;
-  (deletable->attrib_list)[62] = EGL_NONE;
+  (egl_instance->attrib_list)[0] = EGL_BUFFER_SIZE;
+  (egl_instance->attrib_list)[1] = egl_settings_p->buffer_size;  
+  (egl_instance->attrib_list)[2] = EGL_RED_SIZE;
+  (egl_instance->attrib_list)[3] = egl_settings_p->red_size;
+  (egl_instance->attrib_list)[4] = EGL_GREEN_SIZE;
+  (egl_instance->attrib_list)[5] = egl_settings_p->green_size;
+  (egl_instance->attrib_list)[6] = EGL_BLUE_SIZE;
+  (egl_instance->attrib_list)[7] = egl_settings_p->blue_size;
+  (egl_instance->attrib_list)[8] = EGL_LUMINANCE_SIZE;
+  (egl_instance->attrib_list)[9] = egl_settings_p->luminance_size;
+  (egl_instance->attrib_list)[10] = EGL_ALPHA_SIZE;
+  (egl_instance->attrib_list)[11] = egl_settings_p->alpha_size;
+  (egl_instance->attrib_list)[12] = EGL_ALPHA_MASK_SIZE;
+  (egl_instance->attrib_list)[13] = egl_settings_p->alpha_mask_size;
+  (egl_instance->attrib_list)[14] = EGL_CONFIG_ID;
+  (egl_instance->attrib_list)[15] = egl_settings_p->config_id;
+  (egl_instance->attrib_list)[16] = EGL_DEPTH_SIZE;
+  (egl_instance->attrib_list)[17] = egl_settings_p->depth_size;
+  (egl_instance->attrib_list)[18] = EGL_LEVEL;
+  (egl_instance->attrib_list)[19] = egl_settings_p->level;
+  (egl_instance->attrib_list)[20] = EGL_MAX_PBUFFER_WIDTH;
+  (egl_instance->attrib_list)[21] = egl_settings_p->max_pbuffer_width;
+  (egl_instance->attrib_list)[22] = EGL_MAX_PBUFFER_HEIGHT;
+  (egl_instance->attrib_list)[23] = egl_settings_p->max_pbuffer_height;
+  (egl_instance->attrib_list)[24] = EGL_MAX_PBUFFER_PIXELS;
+  (egl_instance->attrib_list)[25] = egl_settings_p->max_pbuffer_pixels;
+  (egl_instance->attrib_list)[26] = EGL_MAX_SWAP_INTERVAL;
+  (egl_instance->attrib_list)[27] = egl_settings_p->max_swap_interval;
+  (egl_instance->attrib_list)[28] = EGL_MIN_SWAP_INTERVAL;
+  (egl_instance->attrib_list)[29] = egl_settings_p->min_swap_interval;
+  (egl_instance->attrib_list)[30] = EGL_NATIVE_VISUAL_ID;
+  (egl_instance->attrib_list)[31] = egl_settings_p->native_visual_id;
+  (egl_instance->attrib_list)[32] = EGL_NATIVE_VISUAL_TYPE;
+  (egl_instance->attrib_list)[33] = egl_settings_p->native_visual_type;
+  (egl_instance->attrib_list)[34] = EGL_SAMPLE_BUFFERS;
+  (egl_instance->attrib_list)[35] = egl_settings_p->sample_buffers;
+  (egl_instance->attrib_list)[36] = EGL_SAMPLES;
+  (egl_instance->attrib_list)[37] = egl_settings_p->samples;
+  (egl_instance->attrib_list)[38] = EGL_STENCIL_SIZE;
+  (egl_instance->attrib_list)[39] = egl_settings_p->stencil_size;
+  (egl_instance->attrib_list)[40] = EGL_TRANSPARENT_RED_VALUE;
+  (egl_instance->attrib_list)[41] = egl_settings_p->transparent_red_value;
+  (egl_instance->attrib_list)[42] = EGL_TRANSPARENT_GREEN_VALUE;
+  (egl_instance->attrib_list)[43] = egl_settings_p->transparent_green_value;
+  (egl_instance->attrib_list)[44] = EGL_TRANSPARENT_BLUE_VALUE;
+  (egl_instance->attrib_list)[45] = egl_settings_p->transparent_blue_value;
+  (egl_instance->attrib_list)[46] = EGL_BIND_TO_TEXTURE_RGB;
+  (egl_instance->attrib_list)[47] = egl_settings_p->bind_to_texture_rgb;
+  (egl_instance->attrib_list)[48] = EGL_BIND_TO_TEXTURE_RGBA;
+  (egl_instance->attrib_list)[49] = egl_settings_p->bind_to_texture_rgba;
+  (egl_instance->attrib_list)[50] = EGL_NATIVE_RENDERABLE;
+  (egl_instance->attrib_list)[51] = egl_settings_p->native_renderable;
+  (egl_instance->attrib_list)[52] = EGL_SURFACE_TYPE;
+  (egl_instance->attrib_list)[53] = egl_settings_p->surface_type;
+  (egl_instance->attrib_list)[54] = EGL_RENDERABLE_TYPE;
+  (egl_instance->attrib_list)[55] = egl_settings_p->renderable_type;
+  (egl_instance->attrib_list)[56] = EGL_TRANSPARENT_TYPE;
+  (egl_instance->attrib_list)[57] = egl_settings_p->transparent_type;
+  (egl_instance->attrib_list)[58] = EGL_COLOR_BUFFER_TYPE;
+  (egl_instance->attrib_list)[59] = egl_settings_p->color_buffer_type;
+  (egl_instance->attrib_list)[60] = EGL_CONFIG_CAVEAT;
+  (egl_instance->attrib_list)[61] = egl_settings_p->config_caveat;
+  (egl_instance->attrib_list)[62] = EGL_CONFORMANT;
+  (egl_instance->attrib_list)[63] = egl_settings_p->conformant;
+  (egl_instance->attrib_list)[64] = EGL_MATCH_NATIVE_PIXMAP;
+  (egl_instance->attrib_list)[65] = egl_settings_p->match_native_pixmap;
+  (egl_instance->attrib_list)[66] = EGL_NONE;
 
   /* get the total number of configs matching attrib_list */
-  deletable->numberConfigs = 0;
-  good = eglChooseConfig(deletable->eglDisplay, deletable->attrib_list, NULL, 0, &(deletable->numberConfigs));
-  if(1 < deletable->numberConfigs) {
-    fprintf(stderr, "eglChooseConfig number of configurations is %d\n", deletable->numberConfigs);
+  egl_instance->numberConfigs = 0;
+  good = eglChooseConfig(egl_instance->eglDisplay, egl_instance->attrib_list, NULL, 0, &(egl_instance->numberConfigs));
+  if(1 < egl_instance->numberConfigs) {
+    fprintf(stderr, "%s: eglChooseConfig number of configurations is %d\n", __func__, egl_instance->numberConfigs);
   }
-  if(0 == deletable->numberConfigs || EGL_TRUE != good) {
-    if(!deletable->numberConfigs) {
-      fprintf(stderr, "first call to eglChooseConfig: number of configurations is zero\n");
+
+  /* TODO: when this error is raised, it currently segfaults. */
+  if(0 == egl_instance->numberConfigs || EGL_TRUE != good) {
+    if(!egl_instance->numberConfigs) {
+      fprintf(stderr, "%s: first call to eglChooseConfig: number of configurations is zero\n", __func__);
     }
-    fprintf(stderr, "first call to eglChooseConfig returned %s\n", eglErrorString(good));
+    fprintf(stderr, "%s: first call to eglChooseConfig returned %s\n", __func__, cvpi_egl_error_string(good));
     goto undoInitialize;
   }
   /* get a list of matching configs */
-  deletable->matchingConfigs = (EGLConfig*)malloc(deletable->numberConfigs * sizeof(deletable->matchingConfigs));
-  good = eglChooseConfig(deletable->eglDisplay, deletable->attrib_list, deletable->matchingConfigs, deletable->numberConfigs, &(deletable->numberConfigs));
-  //good = eglChooseConfig(deletable->eglDisplay, deletable->attrib_list, deletable->matchingConfigs, 1, &(deletable->numberConfigs));
+  egl_instance->matchingConfigs = (EGLConfig*)malloc(egl_instance->numberConfigs * sizeof(egl_instance->matchingConfigs));
+  good = eglChooseConfig(egl_instance->eglDisplay, egl_instance->attrib_list, egl_instance->matchingConfigs, egl_instance->numberConfigs, &(egl_instance->numberConfigs));
+
   if(EGL_TRUE != good) {
-    fprintf(stderr, "second call to eglChooseConfig returned %s\n", eglErrorString(good));
+    fprintf(stderr, "%s: second call to eglChooseConfig returned %s\n", __func__, cvpi_egl_error_string(good));
     goto undoChooseConfig;
   }
+  
+  /* PIXMAP surface */
+  if(pixmap_surface_bool) {
+    EGLNativePixmapType pixmap = (egl_settings_p->surface_pixmap_create_function)(egl_instance);
 
-  const EGLint * attrib_list = NULL; /* in the future change to allow for user modification */
-
-
-  deletable->id = NULL;		/* is null for non-pixmap types */
-
-  if(EGL_CONFIG.surface_type & EGL_PIXMAP_BIT) {
-
-    EGLint pixel_format = pixel_format_name(TRANS_EGL) | EGL_PIXEL_FORMAT_RENDER_VG_BRCM | EGL_PIXEL_FORMAT_VG_IMAGE_BRCM | EGL_PIXEL_FORMAT_RENDER_VG_BRCM|EGL_PIXEL_FORMAT_RENDER_GL_BRCM|EGL_PIXEL_FORMAT_RENDER_GLES_BRCM|EGL_PIXEL_FORMAT_RENDER_GLES2_BRCM;
-    deletable->id = malloc(sizeof(EGLint) * 5);
-    (deletable->id)[0] = 0;
-    (deletable->id)[1] = 0;
-    (deletable->id)[2] = width;
-    (deletable->id)[3] = height;
-    (deletable->id)[4] = pixel_format;
-    /* this function is undocumented, necessary to set the id */
-    /* going off of http://www.raspberrypi.org/forums/viewtopic.php?f=63&t=6488 */
-    eglCreateGlobalImageBRCM(width, height, pixel_format, NULL, pixel_format_name(TRANS_BYTES) * width, deletable->id);
-    if(!(deletable->id)[0] && !(deletable->id)[1]) {
-      good = eglGetError();
-      fprintf(stderr, "eglCreateGlobalImageBRCM returned %s\n", eglErrorString(good));
+    if(pixmap == NULL) {
+      fprintf(stderr, "%s: EGLNativePixmapType function returned NULL pointer.\n", __func__);
       goto undoChooseConfig;
     }
-    /* second last parameter is a void* for Broadcom, beyond that it is undocumented */
-    deletable->eglSurface = EGL_TRUE;
-    /* eglCreatePixmapSurface(1, 20, 0x1ecd070, 0) */
-    deletable->eglSurface = eglCreatePixmapSurface(deletable->eglDisplay, *(deletable->matchingConfigs), deletable->id, attrib_list);
-    //    EGLint val = eglCreatePixmapSurface(deletable->eglDisplay, *(deletable->matchingConfigs), deletable->id, attrib_list);
-    //    fprintf(stderr, "pixmap surface creation return %x %s.\n", deletable->eglSurface, eglErrorString(eglGetError()));
-    //    goto undoCreateGlobalImageBRCM;
-    if(deletable->eglSurface == EGL_NO_SURFACE) {
-      good = eglGetError();
-      fprintf(stderr, "pixmap surface creation failed %s %x.\n", eglErrorString(good), good);
-      goto undoCreateGlobalImageBRCM;
-    }
-  } else if(EGL_CONFIG.surface_type & EGL_PBUFFER_BIT) {
-    deletable->eglSurface = eglCreatePbufferSurface(deletable->eglDisplay, (deletable->matchingConfigs)[0], attrib_list);
 
-    if(deletable->eglSurface == EGL_NO_SURFACE) {
-      fprintf(stderr, "pbuffer surface creation failed %s.\n", eglErrorString(eglGetError()));
-      goto undoChooseConfig;
+    /* create surface */
+    /* not all matchingConfigs truely match so loop untill a matching one is found, bug in eglChooseConfig */
+    unsigned int i = 0;
+    do {
+      egl_instance->eglPixmapSurface = eglCreatePixmapSurface(egl_instance->eglDisplay, (egl_instance->matchingConfigs)[i], pixmap, egl_settings_p->pixmap_surface_attrib_list);
+      ++i;
+    } while(egl_instance->eglPixmapSurface == EGL_NO_SURFACE && i < egl_instance->numberConfigs);
+
+    /* see line 998 in egl_client.c */
+    if(egl_instance->eglPixmapSurface == EGL_NO_SURFACE) {
+      good = eglGetError();
+      fprintf(stderr, "%s: pixmap surface creation failed %s %x.\n", __func__, cvpi_egl_error_string(good), good);
+      goto undoPixmap;
     }
-  } else if(EGL_CONFIG.surface_type & EGL_WINDOW_BIT) {
-    /* TODO */
-    fprintf(stderr, "window surface currently unhandled\n");
-    goto undoChooseConfig;
-    //    deletable->eglSurface = eglCreateWindowSurface(deletable->eglDisplay, (deletable->matchingConfigs)[0], NativeWindowType win, attrib_list);
-  } else {
-    good = EGL_FALSE;
-    fprintf(stderr, "Unhandled surface type: %u\n", EGL_CONFIG.surface_type);
-    goto undoChooseConfig;
+  } 
+  /* PBUFFER surface */
+  if(pbuffer_surface_bool) {
+    unsigned int i = 0;
+    do {
+      egl_instance->eglPbufferSurface = eglCreatePbufferSurface(egl_instance->eglDisplay, 
+								(egl_instance->matchingConfigs)[i], 
+								egl_settings_p->pbuffer_surface_attrib_list);
+      ++i;
+    } while(egl_instance->eglPbufferSurface == EGL_NO_SURFACE && i < egl_instance->numberConfigs);
+    if(egl_instance->eglPbufferSurface == EGL_NO_SURFACE) {
+      fprintf(stderr, "%s: pbuffer surface creation failed %s.\n", __func__, cvpi_egl_error_string(eglGetError()));
+      goto undoPixmap;
+    }
+
+  } 
+  /* WINDOW surface */
+  if(window_surface_bool) {
+    /* client_egl_get_window not documented */
+    EGLNativeWindowType win = (egl_settings_p->surface_window_create_function)(egl_instance);
+    if(win == NULL) {
+      fprintf(stderr, "%s: EGLNativeWindowType returned NULL.\n", __func__);
+      goto undoPixmap;
+    }
+    
+    unsigned int i = 0;
+    do {
+      egl_instance->eglWindowSurface = eglCreateWindowSurface(egl_instance->eglDisplay, 
+							      (egl_instance->matchingConfigs)[i], 
+							      win,
+							      egl_settings_p->window_surface_attrib_list);
+      ++i;
+    } while(egl_instance->eglWindowSurface == EGL_NO_SURFACE && i < egl_instance->numberConfigs);
+    if(egl_instance->eglWindowSurface == EGL_NO_SURFACE) {
+      fprintf(stderr, "%s: pbuffer surface creation failed %s.\n", __func__, cvpi_egl_error_string(eglGetError()));
+      goto undoWindow;
+    }
+  } 
+  if(!(egl_settings_p->surface_type & EGL_PIXMAP_BIT) &&
+     !(egl_settings_p->surface_type & EGL_PBUFFER_BIT) &&
+     !(egl_settings_p->surface_type & EGL_WINDOW_BIT) &&
+     egl_settings_p->current_surface_type == cvpi_egl_surface_type_none) {
+    fprintf(stderr, "%s: No surface type selected: %u\n", __func__, egl_settings_p->surface_type);
   }
-  //  printf("here\n");
-  deletable->eglContext = eglCreateContext(deletable->eglDisplay, *(deletable->matchingConfigs), eglGetCurrentContext(), NULL);
-  if(EGL_NO_CONTEXT == deletable->eglContext) {
-    fprintf(stderr, "eglCreateContext returned %s\n", eglErrorString(eglGetError()));
+
+  egl_instance->eglContext = eglCreateContext(egl_instance->eglDisplay, *(egl_instance->matchingConfigs), eglGetCurrentContext(), egl_settings_p->context_attrib_list);
+  if(EGL_NO_CONTEXT == egl_instance->eglContext) {
+    fprintf(stderr, "%s: eglCreateContext returned %s\n", __func__, cvpi_egl_error_string(eglGetError()));
     goto undoCreateSurface;
   }
 
-
-  good = eglMakeCurrent(deletable->eglDisplay,
-			deletable->eglSurface, deletable->eglSurface,
-			deletable->eglContext);
-  //  printf("here1\n");
+  /* Only one surface type per rendering context is allowed.  Read and
+     draw parameters for eglMakeCurrent are the same because OpenVG
+     requires it and it simplifies the interface. */
+  switch(egl_settings_p->current_surface_type) {
+  case cvpi_egl_surface_type_pixmap:
+    good = eglMakeCurrent(egl_instance->eglDisplay,
+			  egl_instance->eglPixmapSurface, egl_instance->eglPixmapSurface,
+			  egl_instance->eglContext);
+    break;
+  case cvpi_egl_surface_type_pbuffer:
+    good = eglMakeCurrent(egl_instance->eglDisplay,
+			  egl_instance->eglPbufferSurface, egl_instance->eglPbufferSurface,
+			  egl_instance->eglContext);
+    break;
+  case cvpi_egl_surface_type_window:
+    good = eglMakeCurrent(egl_instance->eglDisplay,
+			  egl_instance->eglWindowSurface, egl_instance->eglWindowSurface,
+			  egl_instance->eglContext);
+    break;
+  case cvpi_egl_surface_type_none:
+  default:
+    /* do nothing */
+    break;
+  }
   if(EGL_FALSE == good) {
-    fprintf(stderr, "eglMakeCurrent returned false\n");
+    fprintf(stderr, "%s: eglMakeCurrent returned false\n", __func__);
     goto undoCreateContext;
   }
-
-  printf("deletable ptr: %p\n", deletable);
-  return deletable;
+  return egl_instance;
 
   /* If there is an error in setup, then take down */
 
  undoCreateContext:
-  good = eglDestroyContext(deletable->eglDisplay, deletable->eglContext);
+  good = eglDestroyContext(egl_instance->eglDisplay, egl_instance->eglContext);
   if(EGL_TRUE != good) {
-    fprintf(stderr, "eglDestroyContext returned %s\n", eglErrorString(good));
+    fprintf(stderr, "%s: eglDestroyContext returned %s\n", __func__, cvpi_egl_error_string(good));
   }
 
   undoCreateSurface:
-  good = eglDestroySurface(deletable->eglDisplay, deletable->eglSurface);
-  if(EGL_FALSE == good) {
-    fprintf(stderr, "eglDestroySurface returned false\n");
+  if(window_surface_bool) {
+    good = eglDestroySurface(egl_instance->eglDisplay, egl_instance->eglWindowSurface);
+    if(EGL_FALSE == good) {
+      fprintf(stderr, "%s: eglDestroySurface Window returned false\n", __func__);
+    }
   }
 
-  undoCreateGlobalImageBRCM:
-  if(deletable->id) {		/* id only set to non-zerowhen pixmap is used*/
-    good = eglDestroyGlobalImageBRCM(deletable->id);
+  if(pixmap_surface_bool) {
+    good = eglDestroySurface(egl_instance->eglDisplay, egl_instance->eglPixmapSurface);
     if(EGL_FALSE == good) {
-      fprintf(stderr, "eglDestroyGlobalImageBRCM returned false\n");
+      fprintf(stderr, "%s: eglDestroySurface Pixmap returned false\n", __func__);
     }
-    free(deletable->id);
+  }
+  if(pbuffer_surface_bool) {
+    good = eglDestroySurface(egl_instance->eglDisplay, egl_instance->eglPbufferSurface);
+    if(EGL_FALSE == good) {
+      fprintf(stderr, "%s: eglDestroySurface Pbuffer returned false\n", __func__);
+    }
+  }
+ undoWindow:
+  if(window_surface_bool) {
+    (egl_settings_p->surface_window_destroy_function)(egl_instance);
+  }
+ undoPixmap:
+  if(pixmap_surface_bool) {
+    (egl_settings_p->surface_pixmap_destroy_function)(egl_instance);
   }
 
   undoChooseConfig:
-  free(deletable->matchingConfigs);
+  free(egl_instance->matchingConfigs);
 
   undoInitialize:
-  good = eglTerminate(deletable->eglDisplay);
+  good = eglTerminate(egl_instance->eglDisplay);
   if(EGL_TRUE != good) {
-    fprintf(stderr, "eglTerminate returned %s\n", eglErrorString(good));
+    fprintf(stderr, "%s: eglTerminate returned %s\n", __func__, cvpi_egl_error_string(good));
   }
   undoBase:
 
-  free(deletable);
-  bcm_host_deinit();
+  free(egl_instance);
+  //bcm_host_deinit();
 
   return NULL;
 }
 
 /* takedown EGL */
-void takedownEGL(void* delete) {
-  egl_deletable* deletable = delete;
+void cvpi_egl_instance_takedown(cvpi_egl_instance deletable) {
+  if(deletable == NULL) {
+    return;
+  }
+  cvpi_egl_settings egl_settings_p = deletable->egl_settings;
   EGLBoolean good = EGL_TRUE;
   /* undo eglInitialize */
   good = eglDestroyContext(deletable->eglDisplay, deletable->eglContext);
   if(EGL_TRUE != good) {
-    fprintf(stderr, "eglDestroyContext returned %s\n", eglErrorString(good));
+    fprintf(stderr, "%s: eglDestroyContext returned %s\n", __func__, cvpi_egl_error_string(good));
   }
 
-  good = eglDestroySurface(deletable->eglDisplay, deletable->eglSurface);
-  if(EGL_FALSE == good) {
-    fprintf(stderr, "eglDestroySurface returned false\n");
-  }
-
-  if(deletable->id) {
-    good = eglDestroyGlobalImageBRCM(deletable->id);
+  /* The following tests for each of the three if statements must be
+     equivalent to the three tests created at the beginning of
+     cvpi_egl_instance_setup.
+  */
+  if((egl_settings_p->surface_type & EGL_WINDOW_BIT ||
+      egl_settings_p->current_surface_type == cvpi_egl_surface_type_window) &&
+     egl_settings_p->surface_pixmap_destroy_function != NULL &&
+     egl_settings_p->surface_window_destroy_function != NULL) {
+    good = eglDestroySurface(deletable->eglDisplay, deletable->eglWindowSurface);
     if(EGL_FALSE == good) {
-      fprintf(stderr, "eglDestroyGlobalImageBRCM returned false\n");
+      fprintf(stderr, "%s: eglDestroySurface returned false\n", __func__);
     }
-    free(deletable->id);
+    (egl_settings_p->surface_window_destroy_function)(deletable);
+  }
+
+  if((egl_settings_p->surface_type & EGL_PIXMAP_BIT ||
+      egl_settings_p->current_surface_type == cvpi_egl_surface_type_pixmap) && 
+     egl_settings_p->surface_pixmap_create_function != NULL &&
+     egl_settings_p->surface_pixmap_destroy_function != NULL) {
+    good = eglDestroySurface(deletable->eglDisplay, deletable->eglPixmapSurface);
+    if(EGL_FALSE == good) {
+      fprintf(stderr, "%s: eglDestroySurface returned false\n", __func__);
+    }
+    (egl_settings_p->surface_pixmap_destroy_function)(deletable);
+  }
+  if(egl_settings_p->surface_type & EGL_PBUFFER_BIT || 
+     egl_settings_p->current_surface_type == cvpi_egl_surface_type_pbuffer) {
+    good = eglDestroySurface(deletable->eglDisplay, deletable->eglPbufferSurface);
+    if(EGL_FALSE == good) {
+      fprintf(stderr, "%s: eglDestroySurface Pbuffer returned false\n", __func__);
+    }
   }
 
   free(deletable->matchingConfigs);
 
   good = eglTerminate(deletable->eglDisplay);
   if(EGL_TRUE != good) {
-    fprintf(stderr, "eglTerminate returned %s\n", eglErrorString(good));
+    fprintf(stderr, "%s: eglTerminate returned %s\n", __func__, cvpi_egl_error_string(good));
   }
   free(deletable);
-  delete = NULL;
-  bcm_host_deinit();
+  //bcm_host_deinit();		/* does not do anything /userland/.../bcm_host.c */
 }
 
-void change_surface_type(enum egl_surface_bits bit) {
-  EGL_CONFIG.surface_type = bit;
+/* Turn on or off a BIT in BITFIELD depending on the CHANGE type. */
+#define CVPI_CHANGE_TYPE(change, bitfield, bit) do{if((change) == cvpi_egl_settings_add) {(bitfield) |= (bit);} else {(bitfield) &= ~(bit);}}while(0)
+
+/* CVPI_TRUE_TEST defined cvpi_base.h */
+CVPI_BOOL cvpi_egl_settings_check(cvpi_egl_settings egl_settings_p) {
+  int check = 1;
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_width_check(egl_settings_p->width));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_height_check(egl_settings_p->width));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_pixel_format_brcm_check(egl_settings_p));
+  check &= CVPI_TRUE_TEST(cvpi_egl_surface_functions_check(egl_settings_p));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_buffer_size_check(egl_settings_p->buffer_size));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_red_size_check(egl_settings_p->red_size));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_green_size_check(egl_settings_p->green_size));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_blue_size_check(egl_settings_p->blue_size));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_alpha_size_check(egl_settings_p->alpha_size));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_alpha_mask_size_check(egl_settings_p->alpha_mask_size));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_config_id_check(egl_settings_p->config_id));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_conformant_check(egl_settings_p));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_depth_size_check(egl_settings_p->depth_size));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_max_pbuffer_width_check(egl_settings_p->max_pbuffer_width));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_max_pbuffer_height_check(egl_settings_p->max_pbuffer_height));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_max_pbuffer_pixels_check(egl_settings_p->max_pbuffer_pixels));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_match_native_pixmap_check(egl_settings_p->match_native_pixmap));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_max_swap_interval_check(egl_settings_p->max_swap_interval));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_min_swap_interval_check(egl_settings_p->min_swap_interval));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_renderable_type_check(egl_settings_p));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_stencil_size_check(egl_settings_p->stencil_size));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_surface_type_check(egl_settings_p));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_transparent_red_value_check(egl_settings_p->transparent_red_value));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_transparent_green_value_check(egl_settings_p->transparent_green_value));
+  check &= CVPI_TRUE_TEST(cvpi_egl_settings_transparent_blue_value_check(egl_settings_p->transparent_blue_value));
+  return check;
 }
-void change_renderable_type(enum egl_renderable_bits bit) {
-  EGL_CONFIG.renderable_type = bit;
+
+CVPI_BOOL cvpi_egl_settings_width_check(unsigned long width) {
+  if(width > EGL_CONFIG_MAX_WIDTH) {
+    fprintf(stderr, "%s: width must be <= %d.\n", __func__, EGL_CONFIG_MAX_WIDTH);
+    return CVPI_FALSE;
+  } else {
+    return CVPI_TRUE;
+  }
 }
-void change_transparent_type(enum egl_transparent_type trans) {
-  EGL_CONFIG.transparent_type = trans;
+
+CVPI_BOOL cvpi_egl_settings_width(cvpi_egl_settings egl_settings_p, unsigned long width) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_width_check(width))) {
+    egl_settings_p->width = width;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
 }
-void change_color_buffer_type(enum egl_color_buffer_type color) {
-  EGL_CONFIG.color_buffer_type = color;
+
+CVPI_BOOL cvpi_egl_settings_height_check(unsigned long height) {
+  if(height > EGL_CONFIG_MAX_HEIGHT) {
+    fprintf(stderr, "%s: height must be <= %d.\n", __func__, EGL_CONFIG_MAX_HEIGHT);
+    return CVPI_FALSE;
+  } else {
+    return CVPI_TRUE;
+  }
 }
-void change_config_caveat(enum egl_config_caveat caveat) {
-  EGL_CONFIG.config_caveat = caveat;
+CVPI_BOOL cvpi_egl_settings_height(cvpi_egl_settings egl_settings_p, unsigned long height) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_height_check(height))) {
+    egl_settings_p->height = height;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
 }
-void change_renderable_api(enum egl_renderable_api api) {
-  EGL_CONFIG.renderable_api = api;
+
+CVPI_BOOL cvpi_egl_settings_pixel_format_brcm_check(cvpi_egl_settings cvpi_egl_settings_p) {
+  EGLint options = cvpi_egl_pixel_format_gles2_texture_brcm|
+    cvpi_egl_pixel_format_gles_texture_brcm |
+    cvpi_egl_pixel_format_render_gles2_brcm |
+    cvpi_egl_pixel_format_render_gles_brcm  |
+    cvpi_egl_pixel_format_render_gl_brcm    |
+    cvpi_egl_pixel_format_render_mask_brcm  |
+    cvpi_egl_pixel_format_render_vg_brcm    |
+    cvpi_egl_pixel_format_texture_mask_brcm |
+    cvpi_egl_pixel_format_usage_mask_brcm   |
+    cvpi_egl_pixel_format_vg_image_brcm     ;
+  
+  if(cvpi_egl_settings_p->pixel_format_brcm & ~options) {
+    fprintf(stderr, "%s Illegal option.\n", __func__);
+    return CVPI_FALSE;
+  } else {
+    return CVPI_TRUE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_pixel_format_brcm(cvpi_egl_settings cvpi_egl_settings_p, 
+					      enum cvpi_egl_pixel_format_brcm pixel_format_brcm,
+					      enum cvpi_egl_settings_change change) {
+  if(pixel_format_brcm == cvpi_egl_pixel_format_brcm_none) {
+    cvpi_egl_settings_p->pixel_format_brcm = cvpi_egl_pixel_format_brcm_none;
+    return CVPI_TRUE;
+  } else {
+    EGLint old_value = cvpi_egl_settings_p->pixel_format_brcm;
+    CVPI_CHANGE_TYPE(change, cvpi_egl_settings_p->pixel_format_brcm, pixel_format_brcm);
+    if(CVPI_TRUE_TEST(cvpi_egl_settings_pixel_format_brcm_check(cvpi_egl_settings_p))) {
+      return CVPI_TRUE;
+    } else {
+      cvpi_egl_settings_p->pixel_format_brcm = old_value;
+      return CVPI_FALSE;
+    }
+  }
+}
+
+CVPI_BOOL cvpi_egl_surface_functions_check(cvpi_egl_settings cvpi_egl_settings_p) {
+  /* xnor(create, destroy) & xnor(create, destroy) */
+  char p_c = cvpi_egl_settings_p->surface_pixmap_create_function == NULL ? 0 : 1;
+  char p_d = cvpi_egl_settings_p->surface_pixmap_destroy_function == NULL ? 0 : 1;
+  char w_c = cvpi_egl_settings_p->surface_window_create_function == NULL ? 0 : 1;
+  char w_d = cvpi_egl_settings_p->surface_window_destroy_function == NULL ? 0 : 1;
+  /* xnor = ~xor */
+  if(~(p_c ^ p_d) & ~(w_c ^ w_d)) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: A creation or destroy function exists without its complement.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+
+CVPI_BOOL cvpi_egl_settings_buffer_size_check(EGLint buffer_size) {
+  if(buffer_size >= 0 || buffer_size == EGL_DONT_CARE) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: buffer_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_buffer_size(cvpi_egl_settings egl_settings_p, EGLint buffer_size) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_buffer_size_check(buffer_size))) {
+    egl_settings_p->buffer_size = buffer_size;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_red_size_check(EGLint red_size) {
+  if(red_size >= 0 || red_size == EGL_DONT_CARE) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: red_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_red_size(cvpi_egl_settings egl_settings_p, EGLint red_size) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_red_size_check(red_size))) {
+    egl_settings_p->red_size = red_size;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_green_size_check(EGLint green_size) {
+  if(green_size >= 0 || green_size == EGL_DONT_CARE) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: green_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_green_size(cvpi_egl_settings egl_settings_p, EGLint green_size) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_green_size_check(green_size))) {
+    egl_settings_p->green_size = green_size;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_blue_size_check(EGLint blue_size) {
+  if(blue_size >= 0 || blue_size == EGL_DONT_CARE) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: blue_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_blue_size(cvpi_egl_settings egl_settings_p, EGLint blue_size) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_blue_size_check(blue_size))) {
+    egl_settings_p->blue_size = blue_size;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_alpha_size_check(EGLint alpha_size) {
+  if(alpha_size >= 0 || alpha_size == EGL_DONT_CARE) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: alpha_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_alpha_size(cvpi_egl_settings egl_settings_p, EGLint alpha_size) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_alpha_size_check(alpha_size))) {
+    egl_settings_p->alpha_size = alpha_size;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_alpha_mask_size_check(EGLint alpha_size) {
+  if(alpha_size >= 0 || alpha_size == EGL_DONT_CARE) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: alpha_mask_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_alpha_mask_size(cvpi_egl_settings egl_settings_p, EGLint alpha_size) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_alpha_mask_size_check(alpha_size))) {
+    egl_settings_p->alpha_mask_size = alpha_size;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+
+CVPI_BOOL cvpi_egl_settings_config_id_check(EGLint id) {
+  if(id == EGL_DONT_CARE || id >= 1) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Invalid EGL_CONFIG_ID\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_config_id(cvpi_egl_settings egl_settings_p, EGLint id) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_config_id_check(id))) {
+    egl_settings_p->config_id = id;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+
+CVPI_BOOL cvpi_egl_settings_conformant_check(cvpi_egl_settings egl_settings_p) {
+  if (egl_settings_p->conformant != EGL_DONT_CARE && 
+      (egl_settings_p->conformant & ~(EGL_OPENGL_BIT|EGL_OPENGL_ES_BIT|EGL_OPENGL_ES2_BIT|EGL_OPENVG_BIT))) {
+    fprintf(stderr, "%s: Change makes EGL_CONFORMANT value invalid.\n", __func__);
+    return CVPI_FALSE;
+  } else {
+    return CVPI_TRUE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_conformant(cvpi_egl_settings egl_settings_p, 
+					    enum cvpi_egl_conformant_bits bit,
+					    enum cvpi_egl_settings_change change) {
+  EGLint old_value = egl_settings_p->conformant;
+  if(bit != cvpi_egl_conformant_bit_dc) {
+    CVPI_CHANGE_TYPE(change, egl_settings_p->conformant, bit);
+  } else {
+    egl_settings_p->conformant = cvpi_egl_conformant_bit_dc;
+  }
+
+  if (CVPI_FALSE_TEST(cvpi_egl_settings_conformant_check(egl_settings_p))) {
+    egl_settings_p->conformant = old_value;
+    return CVPI_FALSE;
+  } else {
+    return CVPI_TRUE;
+  }
+}
+
+CVPI_BOOL cvpi_egl_settings_depth_size_check(EGLint depth_size) {
+  if (depth_size == EGL_DONT_CARE || depth_size >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Invalid EGL_DEPTH_SIZE.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_depth_size(cvpi_egl_settings egl_settings_p, EGLint depth_size) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_depth_size_check(depth_size))) {
+    egl_settings_p->depth_size = depth_size;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+
+/* EGL spec does not restrict values for EGL_MAX_PBUFFER_WIDTH,
+   EGL_MAX_PBUFFER_HEIGHT, and EGL_MAX_PBUFFER_PIXELS, and no
+   restrictions appear in egl_client_config_cr.c, but negative values
+   seem nonsensical */
+CVPI_BOOL cvpi_egl_settings_max_pbuffer_width_check(EGLint width) {
+  if (width == EGL_DONT_CARE || width >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Possibly invalid EGL_MAX_PBUFFER_WIDTH.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_max_pbuffer_height_check(EGLint height) {
+  if (height == EGL_DONT_CARE || height >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Possibly invalid EGL_MAX_PBUFFER_HEIGHT.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_max_pbuffer_pixels_check(EGLint pixels) {
+  if (pixels == EGL_DONT_CARE || pixels >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Possibly invalid EGL_MAX_PBUFFER_PIXELS.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+
+CVPI_BOOL cvpi_egl_settings_match_native_pixmap_check(EGLint match_native_pixmap) {
+  if(match_native_pixmap == EGL_NONE) {
+    fprintf(stderr, "%s: EGL_NONE not supported. \nSee egl_client_config_cr.c\n", __func__);
+    return CVPI_FALSE;
+  } else {
+    return CVPI_TRUE;
+  }
+}
+
+CVPI_BOOL cvpi_egl_settings_max_swap_interval_check(EGLint interval) {
+  if(interval == EGL_DONT_CARE || interval >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Invalid EGL_MAX_SWAP_INTERVAL\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_max_swap_interval(cvpi_egl_settings egl_settings_p, EGLint interval) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_max_swap_interval_check(interval))) {
+    egl_settings_p->max_swap_interval = interval;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_min_swap_interval_check(EGLint interval) {
+  if(interval == EGL_DONT_CARE || interval >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Invalid EGL_MIN_SWAP_INTERVAL\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_min_swap_interval(cvpi_egl_settings egl_settings_p, EGLint interval) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_min_swap_interval_check(interval))) {
+    egl_settings_p->min_swap_interval = interval;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_renderable_type_check(cvpi_egl_settings egl_settings_p) {
+  if (egl_settings_p->renderable_type == EGL_DONT_CARE || 
+      (egl_settings_p->renderable_type & (EGL_OPENGL_BIT|EGL_OPENGL_ES_BIT|EGL_OPENGL_ES2_BIT|EGL_OPENVG_BIT))) {
+
+    /* check that the pixel format bits make sense for the renderable type */
+    if(egl_settings_p->renderable_type & EGL_OPENGL_BIT && 
+       !(egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_RENDER_GL_BRCM)) {
+      fprintf(stderr,"%s: Renderable type opengl may require EGL_PIXEL_FORMAT_RENDER_GL_BRCM.\n",__func__);
+    }
+    if(egl_settings_p->renderable_type & EGL_OPENGL_ES_BIT &&
+       !(egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_RENDER_GLES_BRCM &&
+	 egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_GLES_TEXTURE_BRCM)) {
+      fprintf(stderr,"%s: Renderable type opengl_es may require EGL_PIXEL_FORMAT_RENDER_GLES_BRCM and EGL_PIXEL_FORMAT_GLES_TEXTURE_BRCM.\n",__func__);
+    }
+    if(egl_settings_p->renderable_type & EGL_OPENGL_ES2_BIT &&
+       !(egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_RENDER_GLES2_BRCM &&
+	 egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_GLES2_TEXTURE_BRCM)) {
+      fprintf(stderr,"%s: Renderable type opengl_es2 may require EGL_PIXEL_FORMAT_RENDER_GLES2_BRCM and EGL_PIXEL_FORMAT_GLES2_TEXTURE_BRCM.\n",__func__);
+    }
+    if(egl_settings_p->renderable_type & EGL_OPENVG_BIT &&
+       !(egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_RENDER_VG_BRCM &&
+	 egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_VG_IMAGE_BRCM)) {
+      fprintf(stderr,"%s: Renderable type openvg may require EGL_PIXEL_FORMAT_RENDER_VG_BRCM and EGL_PIXEL_FORMAT_VG_IMAGE_BRCM.\n",__func__);
+    }
+
+    return CVPI_TRUE;
+  } else{
+    fprintf(stderr, "%s: Invalid EGL_RENDERABLE_TYPE.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_renderable_type(cvpi_egl_settings egl_settings_p, 
+				       enum cvpi_egl_renderable_bits bit,
+				       enum cvpi_egl_settings_change change) {
+  EGLint old_type = egl_settings_p->renderable_type;
+  CVPI_CHANGE_TYPE(change, egl_settings_p->renderable_type, bit);
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_renderable_type_check(egl_settings_p))) {
+    return CVPI_TRUE;
+  } else {
+    egl_settings_p->renderable_type = old_type;
+    return CVPI_FALSE;
+  } 
+}
+
+CVPI_BOOL cvpi_egl_settings_stencil_size_check(EGLint size) {
+  if(size == EGL_DONT_CARE || size >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Invalid EGL_STENCIL_SIZE.\n", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_stencil_size(cvpi_egl_settings cvpi_egl_settings_p, EGLint size) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_stencil_size_check(size))) {
+    cvpi_egl_settings_p->stencil_size = size;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_surface_type_check(cvpi_egl_settings egl_settings_p) {
+  int all_three = (EGL_WINDOW_BIT|EGL_PIXMAP_BIT|EGL_PBUFFER_BIT) & egl_settings_p->surface_type;
+  if(!all_three) {
+    fprintf(stderr, "%s: Warning: No surface (window, pixmap, or pbuffer) selected.\n", __func__);
+  }
+
+  int valid_bits = EGL_WINDOW_BIT|EGL_PIXMAP_BIT|EGL_PBUFFER_BIT|
+    EGL_MULTISAMPLE_RESOLVE_BOX_BIT|EGL_SWAP_BEHAVIOR_PRESERVED_BIT|
+    EGL_VG_COLORSPACE_LINEAR_BIT|EGL_VG_ALPHA_FORMAT_PRE_BIT;
+
+  if (egl_settings_p->surface_type == EGL_DONT_CARE || !(egl_settings_p->surface_type & ~valid_bits)) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: EGL_SURFACE_TYPE invalid.\n", __func__);
+    return CVPI_FALSE;
+  }
+
+}
+CVPI_BOOL cvpi_egl_settings_surface_type(cvpi_egl_settings egl_settings_p, 
+					 enum cvpi_egl_surface_bits bit,
+					 enum cvpi_egl_settings_change change) {
+  EGLint old_value = egl_settings_p->surface_type;
+
+  if(bit == EGL_DONT_CARE) {
+    egl_settings_p->surface_type = EGL_DONT_CARE;
+  } else {
+    CVPI_CHANGE_TYPE(change, egl_settings_p->surface_type, bit);
+  }
+
+  if (CVPI_TRUE_TEST(cvpi_egl_settings_surface_type_check(egl_settings_p))) {
+    return CVPI_TRUE;
+  } else {
+    egl_settings_p->surface_type = old_value;
+    return CVPI_FALSE;
+  }
+}
+
+CVPI_BOOL cvpi_egl_settings_transparent_red_value_check(EGLint value) {
+  if(value == EGL_DONT_CARE || value >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Invalid EGL_TRANSPARENT_RED_VALUE", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_transparent_red_value(cvpi_egl_settings cvpi_egl_settings_p, EGLint value) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_transparent_red_value_check(value))) {
+    cvpi_egl_settings_p->transparent_red_value = value;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_transparent_green_value_check(EGLint value) {
+  if(value == EGL_DONT_CARE || value >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Invalid EGL_TRANSPARENT_GREEN_VALUE", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_transparent_green_value(cvpi_egl_settings cvpi_egl_settings_p, EGLint value) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_transparent_green_value_check(value))) {
+    cvpi_egl_settings_p->transparent_green_value = value;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_transparent_blue_value_check(EGLint value) {
+  if(value == EGL_DONT_CARE || value >= 0) {
+    return CVPI_TRUE;
+  } else {
+    fprintf(stderr, "%s: Invalid EGL_TRANSPARENT_BLUE_VALUE", __func__);
+    return CVPI_FALSE;
+  }
+}
+CVPI_BOOL cvpi_egl_settings_transparent_blue_value(cvpi_egl_settings cvpi_egl_settings_p, EGLint value) {
+  if(CVPI_TRUE_TEST(cvpi_egl_settings_transparent_blue_value_check(value))) {
+    cvpi_egl_settings_p->transparent_blue_value = value;
+    return CVPI_TRUE;
+  } else {
+    return CVPI_FALSE;
+  }
 }

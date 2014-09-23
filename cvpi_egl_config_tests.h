@@ -1,8 +1,13 @@
 #ifndef CVPI_EGL_CONFIG_TESTS
 #define CVPI_EGL_CONFIG_TESTS 1
 
-int test_cvpi_egl_settings_create(void);
-int test_cvpi_egl_instance_setup_takedown(void);
+#ifndef CVPI
+#include "cvpi.h"
+#endif
+
+CVPI_BOOL test_cvpi_egl_settings_create(void);
+CVPI_BOOL test_cvpi_egl_instance_setup_takedown(void);
+CVPI_BOOL test_cvpi_egl_instance_openvg_pixmap(void);
 /* int test_cvpi_egl_settings_width(void); */
 /* int test_cvpi_egl_settings_width_check(void); */
 /* int test_cvpi_egl_settings_height(void); */

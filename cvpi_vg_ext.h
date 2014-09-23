@@ -1,8 +1,7 @@
-#ifndef _OPENVG_H
-#include <VG/openvg.h>
-#endif
+#ifndef CVPI_VG_EXT
+#define CVPI_VG_EXT
 
-#ifndef VG_CONFIG
-#define VG_CONFIG
-char* vgErrorString(unsigned long error);
+char* cvpi_vg_error_string(unsigned long error);
+#else
+#pragma message __FILE__ ": CVPI_VG_EXT already defined."
 #endif

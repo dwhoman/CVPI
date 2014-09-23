@@ -1,24 +1,24 @@
 #ifndef CVPI
 #define CVPI 1
 
-#ifndef IMAGE_FUNCTIONS
-#include "image_functions.h"
+#ifndef CVPI_IMAGE_FUNCTIONS
+#include "cvpi_image_functions.h"
 #endif
 
-#ifndef EGL_CONFIG
-#include "egl_config.h"
+#ifndef CVPI_EGL_CONFIG
+#include "cvpi_egl_config.h"
 #endif
 
-#ifndef VG_EXT
-#include "vg_ext.h"
+#ifndef CVPI_VG_EXT
+#include "cvpi_vg_ext.h"
 #endif
 
-#ifndef IMAGE_HEADERS
-#include "image_headers.h"
+#ifndef CVPI_IMAGE_HEADERS
+#include "cvpi_image_headers.h"
 #endif
 
-#ifndef CAMERA_SETUP
-#include "camera_setup.h"
+#ifndef CVPI_CAMERA_SETUP
+#include "cvpi_camera_setup.h"
 #endif
 
 #else

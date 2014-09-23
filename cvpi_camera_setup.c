@@ -1,6 +1,8 @@
-/* based on LINUX MEDIA INFRASTRUCTURE API Appendix D. Video Capture Example */
-#ifndef CAMERA_SETUP_H
-#include "camera_setup.h"
+/** \file cvpi_camera_setup.c
+    \brief based on LINUX MEDIA INFRASTRUCTURE API Appendix D. Video Capture Example 
+*/
+#ifndef CVPI_CAMERA_SETUP
+#include "cvpi_camera_setup.h"
 #endif
 
 #ifndef _ASSERT_H
@@ -27,11 +29,13 @@
 #ifndef _STDIO_H
 #include <stdio.h>
 /* stderr */
+/* sprintf */
 #endif
 
 #ifndef	_SYS_STAT_H
 #include <sys/stat.h>
 /* struct stat */
+/* S_ISCHR() */
 #endif
 
 #ifndef _FCNTL_H
@@ -44,83 +48,158 @@
 /* mmap */
 #endif
 
-#ifndef transConfig_h
-#include "transConfig.h"
-#endif
-
 #ifndef _STRING_H
-#include "string.h"
+#include <string.h>
 /* memset() */
 #endif
 
-/* number of camera memory buffers */
-#define CAMERA_INIT_COUNT 4
+#ifndef	_SYS_IOCTL_H
+#include <sys/ioctl.h>
+#endif
 
-#define CAMERA_FORMAT V4L2_PIX_FMT_YUYV
+#ifndef	_UNISTD_H
+#include <unistd.h>
+/* close() */
+#endif
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
-#define MAX_IOCTL_REQUESTS 10000
+/* v4l2 example capture.c says that the buffer min size is 4 */
+/* see what 1 does, 2 should be enough */
+#define CAM_BUFFERS_MIN 1
 
+unsigned long CVPI_CAMERA_MAX_IOCTL_REQUESTS = 100;
+
+typedef struct {
+        void   *start;
+        size_t  length;
+} buffer;
+
+struct cvpi_camera {
+  unsigned long width;
+  unsigned long height;
+  char* path;		      /* dev file path */
+  int fd; /* open camera identifier IMPORTANT */
+  buffer *buffers; /* where the camera stores its output, array of buffer structs length cam_buffers */
+  unsigned int cam_buffers;/* number of camera memory buffers */
+  unsigned long camera_format;
+};
+
+static int xioctl(int fh, int request, void *arg);
+
+static void errno_exit(const char *function, const char *s);
+
+/* \returns CVPI_CAMERA_TAKEDOWN_ERROR if unsuccessful */
+/* \returns CVPI_TRUE if sucessful */
+static int stop_capturing(cvpi_camera cam);
+
+/* \returns CVPI_CAMERA_START_ERROR if unsuccessful */
+/* \returns CVPI_TRUE if sucessful */
+static int start_capturing(cvpi_camera cam);
+
+/* \returns CVPI_CAMERA_START_ERROR if unsuccessful */
+/* \returns CVPI_TRUE if sucessful */
+static int open_device(cvpi_camera cam);
+
+/* \returns CVPI_CAMERA_START_ERROR if unsuccessful */
+/* \returns CVPI_TRUE if sucessful */
+static int init_mmap(cvpi_camera cam);
+
+/* \returns CVPI_CAMERA_START_ERROR if unsuccessful */
+/* \returns CVPI_TRUE if sucessful */
+static int init_device(cvpi_camera cam);
+
+/* \returns CVPI_CAMERA_TAKEDOWN_ERROR if unsuccessful */
+/* \returns CVPI_TRUE if sucessful */
+static int uninit_device(cvpi_camera cam);
+
+/* \returns CVPI_CAMERA_TAKEDOWN_ERROR if unsuccessful */
+/* \returns CVPI_TRUE if sucessful */
+static int close_device(cvpi_camera cam);
+
+cvpi_camera cvpi_camera_create(char* dev_path,
+			       unsigned long width,
+			       unsigned long height,
+			       unsigned long cam_buffers,
+			       unsigned long camera_format) {
+  if(width == 0 || height == 0 || cam_buffers < CAM_BUFFERS_MIN) {
+    fprintf(stderr, "Camera_create errror\nwidth and height must be > 0\ncam_buffers must be > %d\n", CAM_BUFFERS_MIN);
+    return NULL;
+  }
+
+  cvpi_camera cam = malloc(sizeof(cam));
+  cam->width = width;
+  cam->height = height;
+  cam->path = dev_path;
+  cam->buffers = NULL;		/* gets set by init_mmap */
+  cam->fd = CVPI_CAMERA_START_ERROR;
+  cam->cam_buffers = cam_buffers;
+  cam->camera_format = camera_format;
+
+  return cam;
+}
+
+/* 
+   ioctl wrapper
+   if ioctl fails, retries CVPI_CAMERA_MAX_IOCTL_REQUESTS times
+ */
 static int xioctl(int fh, int request, void *arg) {
   int r;
   unsigned long itter = 0;
   
   do {
     r = ioctl(fh, request, arg);
-    if(itter > MAX_IOCTL_REQUESTS) {
+    if(itter > CVPI_CAMERA_MAX_IOCTL_REQUESTS) {
       fprintf(stderr, "xioctl timed out\n");
-      return CAMERA_SETUP_ERROR;
+      return CVPI_SYS_ERROR;
     }
     ++itter;
-  } while (CAMERA_SETUP_ERROR == r && EINTR == errno);
+  } while (CVPI_SYS_ERROR == r && EINTR == errno);
   
   return r;
 }
 
-static void errno_exit(const char *s) {
-  fprintf(stderr, "%s error %d, %s\n", s, errno, strerror(errno));
+/* wrapper */
+static void errno_exit(const char *function, const char *s) {
+  fprintf(stderr, "%s: %s error %d, %s\n", function, s, errno, strerror(errno));
 }
 
-int read_frame(struct camera* cam, struct buffer* buffer) {
+CVPI_BOOL cvpi_camera_read_frame(cvpi_camera cam, cvpi_process_image process) {
   struct v4l2_buffer buf;
   CLEAR(buf);
-  printf("read_frame\n");
 
-  fd_set fds;			/* set man 2 select */
-  struct timeval tv;
+  fd_set fds;			/* set of file descriptors, see man 2 select */
+  struct timeval tv;		/* time value struct, see man gettimeofday */
   int r;
 
   FD_ZERO(&fds);
-  FD_SET(cam->fd, &fds);
+  FD_SET(cam->fd, &fds);	/* add fd to the set of fds */
   
   /* Timeout. */
   tv.tv_sec = 2;
   tv.tv_usec = 0;
   
+  /* wait for one of the file descriptors to become ready */
   r = select(cam->fd + 1, &fds, NULL, NULL, &tv);
   
-  if (-1 == r) {
-    errno_exit("select");
-    return CAMERA_SETUP_ERROR;
+  if (CVPI_SYS_ERROR == r) {
+    errno_exit(__func__, "select");
+    return CVPI_CAMERA_READ_FRAME_ERROR;
   }
   
   if (0 == r) {
-    fprintf(stderr, "select timeout\n");
-    return CAMERA_SETUP_ERROR;
+    fprintf(stderr, "%s: select timeout\n", __func__);
+    return CVPI_CAMERA_READ_FRAME_ERROR;
   }
   
-#if IO_METHOD_CHOICE == IO_METHOD_MMAP
-  
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  buf.memory = V4L2_MEMORY_MMAP;
-  
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_DQBUF, &buf)) {
+  buf.memory = V4L2_MEMORY_MMAP; 
+  /* stop the camera from writing to a buffer */
+  if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_DQBUF, &buf)) {
     switch (errno) {
     case EAGAIN:
       printf("read_frame EAGAIN\n");
-      //return 0;
-      return CAMERA_SETUP_ERROR;
+      return CVPI_CAMERA_READ_FRAME_ERROR;
       
     case EIO:
       /* Could ignore EIO, see spec. */
@@ -128,180 +207,131 @@ int read_frame(struct camera* cam, struct buffer* buffer) {
       /* fall through */
       
     default:
-      errno_exit("VIDIOC_DQBUF");
-      return CAMERA_SETUP_ERROR;
+      errno_exit(__func__, "VIDIOC_DQBUF");
+      return CVPI_CAMERA_READ_FRAME_ERROR;
     }
   }
-  
-  assert(buf.index < cam->n_buffers);
-  
-  buffer->start = cam->buffers[buf.index].start;
-  buffer->length = buf.bytesused;
-  printf("read_frame start: %x, length: %u\n", buffer->start, buffer->length);
-  
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_QBUF, &buf)) {
-    errno_exit("VIDIOC_QBUF");
-    return CAMERA_SETUP_ERROR;
-  }
-#else  /* IO_METHOD_USERPTR */
-  buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  buf.memory = V4L2_MEMORY_USERPTR;
-  buf.parm.capture.timeperframe.numerator = 1;  
-  buf.parm.capture.timeperframe.denominator = 30; /* 30 fps */
-  
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_DQBUF, &buf)) {
-    /* grab a camera capture */
-    /* initialized by start_capturing() */
-    switch (errno) {
-    case EAGAIN:
-      return 0;
-      
-    case EIO:
-      /* Could ignore EIO, see spec. */
-      
-      /* fall through */
-      
-    default:
-      errno_exit("VIDIOC_DQBUF");
-      return CAMERA_SETUP_ERROR;
-    }
-  }
-  
-  for (i = 0; i < cam->n_buffers; ++i) {
-    /* increment i */
-    if (buf.m.userptr == (unsigned long)(cam->buffers)[i].start
-	&& buf.length == cam->buffers[i].length) {
-      break;
-    }
-  }
-  
-  assert(i < cam->n_buffers);
-  
-  buffer->start = (void *)buf.m.userptr;
-  buffer->length = buf.bytesused;
-  printf("read_frame start: %x, length: %u\n", buffer->start, buffer->length);
 
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_QBUF, &buf)) {
-    /* queue for another capture */
-    errno_exit("VIDIOC_QBUF");
-    return CAMERA_SETUP_ERROR;
+  int return_value = CVPI_TRUE;
+  if(process != NULL) {
+    if(!(buf.flags & V4L2_BUF_FLAG_ERROR)) {
+      process(cam->buffers[buf.index].start, buf.bytesused); 
+    } else {
+      fprintf(stderr, "%s: V4L2_BUF_FLAG_ERROR\n", __func__);
+      return_value = CVPI_CAMERA_READ_FRAME_ERROR;
+    }
   }
-#endif
-  return 0;
+  
+  if(buf.index >= cam->cam_buffers) {
+    fprintf(stderr,"%s: buffer index = %d, exceeds number of camera buffers %d\n", __func__, 
+	    buf.index, cam->cam_buffers);
+    return_value = CVPI_CAMERA_READ_FRAME_ERROR;
+  }
+  
+  /* allow the cammera to write another frame to memory */
+  if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_QBUF, &buf)) {
+    errno_exit(__func__, "VIDIOC_QBUF");
+    return_value = CVPI_CAMERA_READ_FRAME_ERROR;
+  }
+
+  return return_value;
 }
 
-static int stop_capturing(struct camera* cam) {
+static int stop_capturing(cvpi_camera cam) {
   enum v4l2_buf_type type;
   
   type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_STREAMOFF, &type)) {
-    errno_exit("VIDIOC_STREAMOFF");
-    return CAMERA_SETUP_ERROR;
+  if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_STREAMOFF, &type)) {
+    errno_exit(__func__, "VIDIOC_STREAMOFF");
+    return CVPI_CAMERA_TAKEDOWN_ERROR;
   }
-  return 0;
+  return CVPI_TRUE;
 }
 
-static int start_capturing(struct camera* cam) {
+static int start_capturing(cvpi_camera cam) {
   unsigned int i;
   enum v4l2_buf_type type;
   
-#if IO_METHOD_CHOICE == IO_METHOD_MMAP
-  for (i = 0; i < cam->n_buffers; ++i) {
+  for (i = 0; i < cam->cam_buffers; ++i) {
     struct v4l2_buffer buf;
     
     CLEAR(buf);
     buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf.memory = V4L2_MEMORY_MMAP;
     buf.index = i;
-			
-    if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_QBUF, &buf)) {
-      errno_exit("VIDIOC_QBUF");
-      return CAMERA_SETUP_ERROR;
+
+    /* ready the camera buffer to receive images */
+    if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_QBUF, &buf)) {
+      errno_exit(__func__, "VIDIOC_QBUF");
+      return CVPI_SYS_ERROR;
     }
   }
   type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_STREAMON, &type)) {
-    errno_exit("VIDIOC_STREAMON");
-    return CAMERA_SETUP_ERROR;
+  /* turn on the camera */
+  if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_STREAMON, &type)) {
+    errno_exit(__func__, "VIDIOC_STREAMON");
+    return CVPI_CAMERA_START_ERROR;
   }
-#else
-  for (i = 0; i < n_buffers; ++i) {
-    struct v4l2_buffer buf;
-    
-    CLEAR(buf);
-    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    buf.memory = V4L2_MEMORY_USERPTR;
-    buf.index = i;
-    buf.m.userptr = (unsigned long)(cam->buffers)[i].start;
-    buf.length = (cam->buffers)[i].length;
-    
-    if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_QBUF, &buf)) {
-      errno_exit("VIDIOC_QBUF");
-      return CAMERA_SETUP_ERROR;
-    }
-  }
-  type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_STREAMON, &type)) {
-    errno_exit("VIDIOC_STREAMON");
-    return CAMERA_SETUP_ERROR;
-  }
-#endif
-  return 0;
+
+  return CVPI_TRUE;
 }
 
-static int open_device(struct camera* cam) {
+static int open_device(cvpi_camera cam) {
   struct stat st;
-  
-  if (CAMERA_SETUP_ERROR == stat(cam->path, &st)) {
-    fprintf(stderr, "Cannot identify '%s': %d, %s\n",
+  /* get information about the /dev/video device, see man 2 stat */
+  if (CVPI_SYS_ERROR == stat(cam->path, &st)) {
+    fprintf(stderr, "%s: Cannot identify '%s': %d, %s\n", __func__,
 	    cam->path, errno, strerror(errno));
-    return CAMERA_SETUP_ERROR;
+    return CVPI_CAMERA_START_ERROR;
   }
   
-  if (!S_ISCHR(st.st_mode)) {
-    fprintf(stderr, "%s is no device\n", cam->path);
-    return CAMERA_SETUP_ERROR;
+  /* http://pubs.opengroup.org/onlinepubs/000095399/basedefs/sys/stat.h.html */
+  /* check that it is a character special file */
+  if (!S_ISCHR(st.st_mode)) {	
+    fprintf(stderr, "%s: %s is no device\n", __func__, cam->path);
+    return CVPI_CAMERA_START_ERROR;
   }
   
   cam->fd = open(cam->path, O_RDWR /* required */ | O_NONBLOCK, 0);
   
-  if (CAMERA_SETUP_ERROR == cam->fd) {
-    fprintf(stderr, "Cannot open '%s': %d, %s\n",
+  if (CVPI_SYS_ERROR == cam->fd) {
+    fprintf(stderr, "%s: Cannot open '%s': %d, %s\n", __func__,
 	    cam->path, errno, strerror(errno));
-    return CAMERA_SETUP_ERROR;
+    return CVPI_CAMERA_START_ERROR;
   }
-  return 0;
+  return CVPI_TRUE;
 }
 
-static int init_mmap(struct camera* cam) {
-  struct v4l2_requestbuffers req;
+static int init_mmap(cvpi_camera cam) {
+  /* create buffers to store frames */
+  struct v4l2_requestbuffers req; /* http://www.linuxtv.org/downloads/v4l-dvb-apis/vidioc-reqbufs.html */
   
   CLEAR(req);
   
-  req.count = CAMERA_INIT_COUNT;
+  req.count = cam->cam_buffers;
   req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   req.memory = V4L2_MEMORY_MMAP;
-
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_REQBUFS, &req)) {
+  /* initiate MMAP I/O */
+  if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_REQBUFS, &req)) {
     if (EINVAL == errno) {
-      fprintf(stderr, "%s does not support memory mapping\n", cam->path);
-      return CAMERA_SETUP_ERROR;
+      fprintf(stderr, "%s: %s does not support memory mapping\n", __func__, cam->path);
+      return CVPI_CAMERA_START_ERROR;
     } else {
-      errno_exit("VIDIOC_REQBUFS");
-      return CAMERA_SETUP_ERROR;
+      errno_exit(__func__, "VIDIOC_REQBUFS");
+      return CVPI_CAMERA_START_ERROR;
     }
   }
 
-  if (req.count < 2) {
-    fprintf(stderr, "Insufficient buffer memory on %s\n", cam->path);
-      return CAMERA_SETUP_ERROR;
+  if (req.count < CAM_BUFFERS_MIN) {
+    fprintf(stderr, "%s: Insufficient buffer memory on %s\n", __func__, cam->path);
+      return CVPI_CAMERA_START_ERROR;
   }
-
+  /* create camera buffers array */
   cam->buffers = calloc(req.count, sizeof(*(cam->buffers)));
 
   if (!cam->buffers) {
-    fprintf(stderr, "Out of memory\n");
-    return CAMERA_SETUP_ERROR;
+    fprintf(stderr, "%s: Out of memory\n", __func__);
+    return CVPI_CAMERA_START_ERROR;
   }
 
   int n = 0;
@@ -313,10 +343,10 @@ static int init_mmap(struct camera* cam) {
     buf.type        = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     buf.memory      = V4L2_MEMORY_MMAP;
     buf.index       = n;
-
-    if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_QUERYBUF, &buf)) {
-      errno_exit("VIDIOC_QUERYBUF");
-      return CAMERA_SETUP_ERROR;
+    /* query the status of buf */
+    if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_QUERYBUF, &buf)) {
+      errno_exit(__func__, "VIDIOC_QUERYBUF");
+      return CVPI_CAMERA_START_ERROR;
     }
     
     cam->buffers[n].length = buf.length;
@@ -328,75 +358,39 @@ static int init_mmap(struct camera* cam) {
 	   cam->fd, buf.m.offset);
     
     if (MAP_FAILED == cam->buffers[n].start) {
-      errno_exit("mmap");
-      return CAMERA_SETUP_ERROR;
+      errno_exit(__func__, "mmap");
+      return CVPI_CAMERA_START_ERROR;
     }
   }
+  return CVPI_TRUE;
 }
 
-static int init_userp(struct camera* cam, unsigned int buffer_size) {
-  struct v4l2_requestbuffers req;
-  
-  CLEAR(req);
-  
-  req.count  = CAMERA_INIT_COUNT;
-  req.type   = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-  req.memory = V4L2_MEMORY_USERPTR;
-  
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_REQBUFS, &req)) {
-    if (EINVAL == errno) {
-      fprintf(stderr, "%s does not support user pointer i/o\n", cam->path);
-      return CAMERA_SETUP_ERROR;
-    } else {
-      errno_exit("VIDIOC_REQBUFS");
-      return CAMERA_SETUP_ERROR;
-    }
-  }
-  
-  cam->buffers = calloc(CAMERA_INIT_COUNT, sizeof(*(cam->buffers)));
-  
-  if (!cam->buffers) {
-    fprintf(stderr, "Out of memory\n");
-    return CAMERA_SETUP_ERROR;
-  }
-  
-  int n = 0;
-  for (; n < CAMERA_INIT_COUNT; ++n) {
-    cam->buffers[n].length = buffer_size;
-    cam->buffers[n].start = malloc(buffer_size);
-    
-    if (!cam->buffers[n].start) {
-      fprintf(stderr, "Out of memory\n");
-      return CAMERA_SETUP_ERROR;
-    }
-  }
-}
-
-static int init_device(struct camera* cam) {
+static int init_device(cvpi_camera cam) {
+  /* set camera settings: width, height, encoding */
   struct v4l2_capability cap;
   struct v4l2_cropcap cropcap;
   struct v4l2_crop crop;
   struct v4l2_format fmt;
-  unsigned int min;
-
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_QUERYCAP, &cap)) {
+  unsigned long min;
+  /* query the device's capabilities */
+  if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_QUERYCAP, &cap)) {
     if (EINVAL == errno) {
-      fprintf(stderr, "%s is no V4L2 device\n", cam->path);
+      fprintf(stderr, "%s: %s is no V4L2 device\n", __func__, cam->path);
     } else {
-      errno_exit("VIDIOC_QUERYCAP");
+      errno_exit(__func__, "VIDIOC_QUERYCAP");
     }
-    return CAMERA_SETUP_ERROR;
+    return CVPI_CAMERA_START_ERROR;
   }
   
   if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) {
-    fprintf(stderr, "%s is no video capture device\n", cam->path);
-    return CAMERA_SETUP_ERROR;
+    fprintf(stderr, "%s: %s is no video capture device\n", __func__, cam->path);
+    return CVPI_CAMERA_START_ERROR;
   }
 
   if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
-    fprintf(stderr, "%s does not support streaming i/o\n",
+    fprintf(stderr, "%s: %s does not support streaming i/o\n", __func__,
 	    cam->path);
-    return CAMERA_SETUP_ERROR;
+    return CVPI_CAMERA_START_ERROR;
   }
   
 
@@ -405,12 +399,12 @@ static int init_device(struct camera* cam) {
   CLEAR(cropcap);
 
   cropcap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-
+  /* query cropping and scaling abilities */
   if (0 == xioctl(cam->fd, VIDIOC_CROPCAP, &cropcap)) {
     crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     crop.c = cropcap.defrect; /* reset to default */
     
-    if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_S_CROP, &crop)) {
+    if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_S_CROP, &crop)) {
       switch (errno) {
       case EINVAL:
 	/* Cropping not supported. */
@@ -428,85 +422,85 @@ static int init_device(struct camera* cam) {
 
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
-  fmt.fmt.pix.width       = TRANS_WIDTH;
-  fmt.fmt.pix.height      = TRANS_HEIGHT;
-  fmt.fmt.pix.pixelformat = CAMERA_FORMAT;
+  fmt.fmt.pix.width       = cam->width;
+  fmt.fmt.pix.height      = cam->height;
+  fmt.fmt.pix.pixelformat = cam->camera_format;
   printf("pixel format %d\n", fmt.fmt.pix.pixelformat);
-  fmt.fmt.pix.field       = V4L2_FIELD_ANY; //V4L2_FIELD_INTERLACED;
+  fmt.fmt.pix.field       = V4L2_FIELD_ANY; // how lines in video are interlaced when transmitted
   
-  if (CAMERA_SETUP_ERROR == xioctl(cam->fd, VIDIOC_S_FMT, &fmt)) {
-    errno_exit("VIDIOC_S_FMT");
-    return CAMERA_SETUP_ERROR;
+  /* set/apply the video format */
+  if (CVPI_SYS_ERROR == xioctl(cam->fd, VIDIOC_S_FMT, &fmt)) {
+    errno_exit(__func__, "VIDIOC_S_FMT");
+    return CVPI_CAMERA_START_ERROR;
   }
   printf("pixel format %d\n", fmt.fmt.pix.pixelformat);
 
   /* Buggy driver paranoia. */
-  min = fmt.fmt.pix.width * pixel_format_name(TRANS_BYTES);
+  min = fmt.fmt.pix.width * cam->camera_format;
   if (fmt.fmt.pix.bytesperline < min)
     fmt.fmt.pix.bytesperline = min;
   min = fmt.fmt.pix.bytesperline * fmt.fmt.pix.height;
   if (fmt.fmt.pix.sizeimage < min)
     fmt.fmt.pix.sizeimage = min;
-  
-#if IO_METHOD_CHOICE == IO_METHOD_MMAP
+
+  /* setup memory */
   return init_mmap(cam);
-#else
-  return init_userp(cam, fmt.fmt.pix.sizeimage);
-#endif
 }
 
-int camera_setup(struct camera* cam) {
-  int ret = open_device(cam);
-  if(ret == CAMERA_SETUP_ERROR) {
-    return CAMERA_SETUP_ERROR;
+CVPI_BOOL camera_start(cvpi_camera cam) {
+  int ret = open_device(cam);	/* open("/dev/video",...), set the file descriptor cam->fd */
+  if(CVPI_FALSE_TEST(ret)) {
+    return CVPI_CAMERA_START_ERROR;
   }
-  ret = init_device(cam);
-  if(ret == CAMERA_SETUP_ERROR) {
+  ret = init_device(cam);	/* apply width, height cam settings and other settings to camera.  */
+  if(CVPI_FALSE_TEST(ret)) {
     close_device(cam);
-    return CAMERA_SETUP_ERROR;
+    return CVPI_CAMERA_START_ERROR;
   }
   ret = start_capturing(cam);
-  if(ret == CAMERA_SETUP_ERROR) {
+  if(CVPI_FALSE_TEST(ret)) {
     ret = uninit_device(cam);
-    if(ret != CAMERA_SETUP_ERROR) {
+    if(CVPI_TRUE_TEST(ret)) {
       close_device(cam);
     }
-    return CAMERA_SETUP_ERROR;
+    return CVPI_CAMERA_START_ERROR;
   }
-  return 0;
+  return CVPI_TRUE;
 }
 
-static int uninit_device(struct camera* cam) {
-  unsigned int i;
-  
-#if IO_METHOD_CHOICE == IO_METHOD_MMAP
-  for (i = 0; i < cam->n_buffers; ++i) {
-    if (-1 == munmap(cam->buffers[i].start, cam->buffers[i].length)) {
-      errno_exit("munmap");
-      return CAMERA_SETUP_ERROR;
+static int uninit_device(cvpi_camera cam) {
+  unsigned long i;
+
+  for (i = 0; i < cam->cam_buffers; ++i) {
+    if (CVPI_SYS_ERROR == munmap(cam->buffers[i].start, cam->buffers[i].length)) {
+      errno_exit(__func__, "munmap");
+      return CVPI_CAMERA_TAKEDOWN_ERROR;
     }
   }
   
-#else
-  for (i = 0; i < cam->n_buffers; ++i) {
-    free(cam->buffers[i].start);
-  }
-#endif
   free(cam->buffers);
-  return 0;
+  cam->buffers = NULL;
+  return CVPI_TRUE;
 }
 
-static int close_device(struct camera* cam) {
-  if (-1 == close(cam->fd)) {
-    errno_exit("close");
-    return CAMERA_SETUP_ERROR;
+static int close_device(cvpi_camera cam) {
+  if (CVPI_SYS_ERROR == close(cam->fd)) {
+    errno_exit(__func__, "close");
+    return CVPI_CAMERA_TAKEDOWN_ERROR;
   }
-  cam->fd = -1;
-  return 0;
+  cam->fd = CVPI_SYS_ERROR;
+  return CVPI_TRUE;
 }
 
-void camera_takedown(struct camera* cam) {
+void camera_takedown(cvpi_camera cam) {
   stop_capturing(cam);
   uninit_device(cam);
   close_device(cam);
+
+  if(cam->buffers != NULL) {
+    free(cam->buffers);
+    cam->buffers = NULL;
+  }
+  free(cam);
+  cam = NULL;
 }

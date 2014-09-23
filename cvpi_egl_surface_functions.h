@@ -1,5 +1,10 @@
-#ifndef
+#ifndef CVPI_EGL_SURFACE_FUNCTIONS
 #define CVPI_EGL_SURFACE_FUNCTIONS 1
+
+#ifndef CVPI_EGL_CONFIG
+#include "cvpi_egl_config.h"
+#endif
+
 /* These are possible implemenations of the cvpi_egl_settings struct
    parameters
    surface_pixmap_create_function/surface_pixmap_destroy_function and

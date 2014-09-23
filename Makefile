@@ -1,12 +1,17 @@
-local=/home/pi/userland/build/raspberry/release/opt/vc/lib
+local=/home/pi/userland/build/raspberry/release/opt/vc
+
+# system libraries
 BCM=-L /opt/vc/lib -I /opt/vc/include/ -I /opt/vc/include/EGL/ -I /opt/vc/include/interface/vmcs_host/linux/ -lbcm_host
-#BCM=-I $(local)/opt/vc/lib -I $(local)/opt/vc/include/ -I $(local)/opt/vc/include/EGL/ -I $(local)/opt/vc/include/interface/vmcs_host/linux/ -L $(local)/opt/vc/lib
 EGL=-L /opt/vc/lib -I /opt/vc/include/ -I /opt/vc/include/interface/vcos/pthreads/ -lEGL -lGLESv2
-#EGL=-I $(local)/opt/vc/lib -I $(local)/opt/vc/include/ -I $(local)/opt/vc/include/interface/vcos/pthreads/ -L $(local)/opt/vc/lib
+
+# local libraries
+#BCM=-I $(local)/lib/opt/vc/lib/ -I $(local)/lib/opt/vc/include/ -I $(local)/lib/opt/vc/include/EGL/ -I $(local)/lib/opt/vc/include/interface/vmcs_host/linux/ -L $(local)/lib/opt/vc/lib/
+#EGL=-I $(local)/lib/opt/vc/lib/ -I $(local)/lib/opt/vc/include/ -I $(local)/lib/opt/vc/include/interface/vcos/pthreads/ -L $(local)/lib/opt/vc/lib/ -L $(local)/include/
+
 # remove unused code
 size_C=-fdata-sections -ffunction-sections
 SIZE_L=-Wl,--gc-sections
-CC=gcc -g 
+CC=gcc -Wall
 # -std=gnu99 
 
 
@@ -22,53 +27,55 @@ CC=gcc -g
 # librt.so.1 => /lib/arm-linux-gnueabihf/librt.so.1 (0xb6d36000)
 # /lib/ld-linux-armhf.so.3 (0xb6fa8000)
 
-custom=$(local)/libEGL.so $(local)/libGLESv2.so $(local)/libbcm_host.so $(local)/libvchiq_arm.so $(local)/libvcos.so /lib/arm-linux-gnueabihf/libc.so.6 /lib/arm-linux-gnueabihf/libm.so.6 /lib/arm-linux-gnueabihf/libpthread.so.0 /lib/arm-linux-gnueabihf/libdl.so.2 /lib/arm-linux-gnueabihf/librt.so.1 /lib/ld-linux-armhf.so.3
+# modified library code for debugging purposes
+#custom=$(local)/lib/libEGL.so $(local)/lib/libGLESv2.so $(local)/lib/libbcm_host.so $(local)/lib/libvchiq_arm.so $(local)/lib/libvcos.so /lib/arm-linux-gnueabihf/libc.so.6 /lib/arm-linux-gnueabihf/libm.so.6 /lib/arm-linux-gnueabihf/libpthread.so.0 /lib/arm-linux-gnueabihf/libdl.so.2 /lib/arm-linux-gnueabihf/librt.so.1 /lib/ld-linux-armhf.so.3
+
+custom= 
+
+
+# main program suite
+cvpi_egl_config.o: cvpi_egl_config.c
+	$(CC) $(custom) $(BCM) $(EGL) -c $^
+cvpi_vg_ext.o: cvpi_vg_ext.c
+	$(CC) $(custom) $(BCM) $(EGL) -c $^
+cvpi_camera_setup.o: cvpi_camera_setup.c
+	$(CC) -c $^
+cvpi_image_headers.o: cvpi_image_headers.c
+	$(CC) $(custom) $(BCM) $(EGL) -c $^
+cvpi_egl_surface_functions.o: cvpi_egl_surface_functions.c
+	$(CC) $(custom) $(BCM) $(EGL) -c $^
+cvpi_egl_surface_functions_expand: cvpi_egl_surface_functions.c
+	$(CC) -E $(custom) $(BCM) $(EGL) -o cvpi_egl_surface_functions_expand.c $^
+cvpi_image_functions.o: cvpi_image_functions.c
+	$(CC) $(custom) $(BCM) $(EGL) -c $^
+cvpi: cvpi_egl_config.o cvpi_vg_ext.o cvpi_camera_setup.o\
+	 cvpi_image_headers.o cvpi_egl_surface_functions.o cvpi_image_functions.o
+clean:
+	rm cvpi_egl_config.o cvpi_vg_ext.o cvpi_camera_setup.o cvpi_image_headers.o\
+	 cvpi_egl_surface_functions.o cvpi_image_functions.o
+
+# testing programs
+cvpi_egl_config_tests.o: cvpi_egl_config_tests.c
+	$(CC) $(custom) $(BCM) $(EGL) -c $^
+cvpi_image_tests.o: cvpi_image_tests.c
+	$(CC) $(custom) $(BCM) $(EGL) -c $^
+cvpi_tests.o: cvpi_tests.c
+	$(CC) $(custom) $(BCM) $(EGL) -c $^
+
+cvpi_test: cvpi cvpi_egl_config_tests.o cvpi_image_tests.o cvpi_tests.o
+	$(CC) $(custom) $(BCM) $(EGL) -o cvpi_test cvpi_egl_config_tests.o cvpi_image_tests.o cvpi_tests.o cvpi_egl_config.o cvpi_vg_ext.o cvpi_camera_setup.o cvpi_image_headers.o cvpi_egl_surface_functions.o cvpi_image_functions.o
+
+camera_setup_test: camera_setup.c camera_setup_test.c bitmap.c
+	$(CC) $(custom) $(BCM) $(EGL) -Wall -o camera_setup_test $^
+
+yuv_convert: image_functions.c yuv_convert.c cvpi_egl_config.c transConfig.c vgConfig.c bitmap.c
+	$(CC) $(custom) $(BCM) $(EGL) -o yuv_convert $^
+
+# test the eglConfig functions
+#-Wl,-rpath,$(local)
+eglconfigtest: eglInterface cvpi_egl_config.c eglConfigTest.c vgConfig.c
+	$(CC) $(custom) -Wall -o eglGetConfigTest cvpi_egl_config.c vgConfig.c eglConfigTest.c $(BCM) $(EGL)
 
 # returns a CSV string to stdout of EGL configurations
 eglGetConfigs: 
 	$(CC) -Wall $(EGL) -o eglGetConfigs eglGetConfigs.c
-
-# test the eglConfig functions
-#-Wl,-rpath,$(local)
-eglconfigtest: eglInterface eglConfig.c eglConfigTest.c vgConfig.c
-	$(CC) $(custom) -Wall -o eglGetConfigTest eglConfig.c vgConfig.c eglConfigTest.c $(BCM) $(EGL)
-eglconfigtestlinkc: eglInterface eglConfig.c eglConfigTest.c
-	$(CC) -v -I /home/pi/userland/build/raspberry/release/opt/vc/include/ -I /home/pi/userland/build/raspberry/release/opt/vc/include/interface/vcos/pthreads/ -I /home/pi/userland/build/raspberry/release/opt/vc/include/interface/vmcs_host/linux/ -I /home/pi/userland/build/raspberry/release/opt/vc/include/EGL/ -o eglConfigTest -Wall $(custom) eglConfig.c eglConfigTest.c
-#	ld $(custom) eglConfig.o eglConfigTest.o -o eglConfigTest --entry main
-eglInterface: eglCreateConfigHeader
-	./eglCreateConfigHeader > eglGeneratedConfigHeader.h;
-#	cat eglConfig.h >> eglGeneratedConfigHeader.h;
-eglCreateConfigHeader: eglCreateConfigHeader.c
-	$(CC) $(EGL) -o eglCreateConfigHeader eglCreateConfigHeader.c
-eglconfigexpand: eglConfig.c
-	$(CC) $(BCM) $(EGL) -E eglConfig.c -o eglConfig_expanded.c
-eglconfigtestexpand: eglConfigTest.c
-	$(CC) $(BCM) $(EGL) -E eglConfigTest.c -o eglConfigTest_expanded.c
-simple_gl_example: simple_gl_example.cpp
-	g++ -lX11 -lEGL -lGLESv2 simple_gl_example.cpp $(EGL) $(BCM) -g -o egl_example -O3
-
-eglConfig.o: eglConfig.c
-	$(CC) $(BCM) $(EGL) -c $^
-vgConfig.o: vgConfig.c
-	$(CC) $(BCM) $(EGL) -c $^
-camera_setup.o: camera_setup.c
-	$(CC) $(BCM) $(EGL) -c $^
-transConfig.o: transConfig.c
-	$(CC) $(BCM) $(EGL) -c $^
-main_loop.o: main_loop.c
-	$(CC) $(BCM) $(EGL) -c $^
-bitmap.o: bitmap.c
-	$(CC) $(BCM) $(EGL) -c $^
-main_loop_expand: main_loop.c
-	$(CC) $(BCM) $(EGL) -o main_loop_expanded.c -E $^
-
-capture_frame: eglInterface main_loop.o eglConfig.o vgConfig.o camera_setup.o transConfig.o bitmap.o
-	$(CC) $(BCM) $(EGL) -lv4l2 -o capture_frame eglConfig.o vgConfig.o camera_setup.o transConfig.o bitmap.o main_loop.o
-clean:
-	rm main_loop.o eglConfig.o vgConfig.o camera_setup.o transConfig.o bitmap.o
-
-camera_setup_expand: camera_setup.c
-	$(CC) -o camera_setup_expand.c -E $^
-
-yuyv2bmp: yuyv2bmp.c
-	$(CC) $(BCM) $(EGL) -o yuyv2bmp $^

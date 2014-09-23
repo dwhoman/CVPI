@@ -1,3 +1,5 @@
+/* Used for printing out a csv list of EGL configurations. Might be
+   useful for finding possible configurations. */
 #include <stdio.h>
 #include <stdlib.h>
 #include <EGL/eglplatform.h>

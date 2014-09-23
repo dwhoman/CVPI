@@ -1,26 +1,40 @@
+#ifndef _STDIO_H
 #include <stdio.h>
+#endif
+
+#ifndef	_STDLIB_H
 #include <stdlib.h>
+#endif
 
-#define IMAGES_CORRECT_DIR "./test_images_correct/"
-#define IMAGES_TMP_DIR "./test_images_tmp/"
+#ifndef CVPI
+#include "cvpi.h"
+#endif
 
-int test_yuyv2yuva() {
-  char* yuyv2yuva_input = IMAGES_CORRECT_DIR "mark1_black.yuv";
-  char* yuyv2yuva_correct_result = IMAGES_CORRECT_DIR "mark1_black_yuva.yuv";
-  char* yuyv2yuva_tmp_result = IMAGES_TMP_DIR "mark1_black_yuva.yuv";
+#ifndef CVPI_EGL_CONFIG_TESTS
+#include "cvpi_egl_config_tests.h"
+#endif
 
-  FILE* input = fopen(yuyv2yuva_input, "r");
-  FILE* correct = fopen(yuyv2yuva_correct_result, "r");
-  FILE* ouput = fopen(yuyv2yuva_tmp_result, "w");
+#ifndef CVPI_IMAGE_TESTS
+#include "cvpi_image_tests.h"
+#endif
 
-  void* input_data;
-
-
-  size_t input_size = fread();
-  
+void test_runner(CVPI_BOOL(*test_function)(void), char* name) {
+  if(CVPI_TRUE_TEST(test_function())) {
+    printf("PASSED: %s\n", name);
+  } else {
+    printf("FAILED: %s\n", name);
+  }
+  printf("--------------------\n");
 }
 
+#define TEST(f) do {CVPI_BOOL(*p18025ldgfaln1293)(void) = (f); test_runner(p18025ldgfaln1293,(#f));} while(0)
+
 int main() {
+  TEST(test_cvpi_egl_settings_create);
+  TEST(test_cvpi_egl_instance_setup_takedown);
+  TEST(test_cvpi_egl_instance_openvg_pixmap);
+  
+  //TEST(test_cvpi_yuyv2yuva);
 
   return 0;
 }

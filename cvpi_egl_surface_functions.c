@@ -1,5 +1,38 @@
+#ifndef __egl_h_
+#include <EGL/egl.h>
+#endif
+
+#ifndef __eglext_h_
+#include <eglext.h>
+#endif
+
+#ifndef __eglplatform_h_
+#include <EGL/eglplatform.h>
+#endif
+
+#ifndef BCM_HOST_H
+#include <bcm_host.h>
+#endif
+
+#ifndef EGL_EGLEXT_PROTOTYPES
+#pragma message __FILE__ ": EGL_EGLEXT_PROTOTYPES must be defined for eglCreateGlobalImageBRCM prototype to be defined."
+#endif
+
+#ifndef EGLEXT_BRCM_H
+#include <eglext_brcm.h>
+/* eglCreateGlobalImageBRCM */
+#endif
+
+#ifndef CVPI
+#include "cvpi.h"
+#endif
+
 #ifndef CVPI_EGL_CONFIG
 #include "cvpi_egl_config.h"
+#endif
+
+#ifndef CVPI_EGL_SURFACE_FUNCTIONS
+#include "cvpi_egl_surface_functions.h"
 #endif
 
 #ifndef _STDIO_H
@@ -48,22 +81,23 @@ struct pixmap_image* pixmap_image_find(pixmap_function_pointer pointer) {
 /* Insert into the alist. If already in the alist, update the info. */
 static struct pixmap_image* pixmap_image_insert(cvpi_egl_settings egl_settings_p) {
   /* no duplicate keys */
-  struct pixmap_image* found = pixmap_image_find(egl_settings_p->pointer);
+  struct pixmap_image* found = pixmap_image_find(egl_settings_p->surface_pixmap_create_function);
   if(found == NULL) {
     /* insert at beginning of list, making a new head */
-    struct pixmap_image* found = pixmap_image_head;
+    found = pixmap_image_head;
     pixmap_image_head = malloc(sizeof(*pixmap_image_head));
     pixmap_image_head->next = found; /* found = old head */
     pixmap_image_head->pointer = egl_settings_p->surface_pixmap_create_function;
-    pixmap_image_head->pixmap_id = malloc(sizeof(pixmap_image_head->pixmap_id) * 5);
+    //pixmap_image_head->pixmap_id
+    pixmap_image_head->pixmap_id = malloc(sizeof(EGLint) * 5);
     found = pixmap_image_head;	/* found = new head */
   }
   /* not sure why eglCreateGlobalImageBRCM requires this array format */
-  found->pixmap_id[0] = 0;
-  found->pixmap_id[1] = 0;
-  found->pixmap_id[2] = egl_settings_p->width;
-  found->pixmap_id[3] = egl_settings_p->height;
-  found->pixmap_id[4] = egl_settings_p->pixel_format;
+  (found->pixmap_id)[0] = 0;
+  (found->pixmap_id)[1] = 0;
+  (found->pixmap_id)[2] = egl_settings_p->width;
+  (found->pixmap_id)[3] = egl_settings_p->height;
+  (found->pixmap_id)[4] = egl_settings_p->pixel_format | egl_settings_p->pixel_format_brcm;
 
   return found;
 }
@@ -95,9 +129,10 @@ void cvpi_egl_surface_pixmap_list_destroy() {
   struct pixmap_image* current;
   while(pixmap_image_head != NULL) {
     current = pixmap_image_head;
-    pixmap_image_head = pixmap_image_head->next;
+    pixmap_image_head = current->next;
     free(current->pixmap_id);
     current->pixmap_id = NULL;
+    current->next = NULL;
     free(current);
   }
 }
@@ -106,20 +141,15 @@ void cvpi_egl_surface_pixmap_list_destroy() {
 EGLNativePixmapType cvpi_egl_surface_pixmap_native_creator(cvpi_egl_instance egl_instance) {
   cvpi_egl_settings egl_settings_p = egl_instance->egl_settings;
   struct pixmap_image* pointer = pixmap_image_insert(egl_settings_p);
-
-  /* user defined formats plus Broadcom, seemingly required, settings */
-  EGLint format = egl_settings_p->pixel_format | egl_settings_p->pixel_format_brcm;
-
   /* eglCreateGlobalImageBRCM is undocumented, necessary to set the id */
   /* going off of http://www.raspberrypi.org/forums/viewtopic.php?f=63&t=6488 */
   EGLint stride = cvpi_egl_bytes_per_pixel(egl_settings_p->pixel_format) * egl_settings_p->width;
-    
   eglCreateGlobalImageBRCM(egl_settings_p->width, egl_settings_p->height, 
-			   format, NULL, stride, pointer->pixmap_id);
+			   (pointer->pixmap_id)[4], NULL, stride, pointer->pixmap_id);
   if(!(pointer->pixmap_id[0]) && !(pointer->pixmap_id[1])) {
     fprintf(stderr, "%s: eglCreateGlobalImageBRCM returned %s\n", __func__, cvpi_egl_error_string(eglGetError()));
     pixmap_image_delete(pointer);
-    return NULL
+    return NULL;
   } 
   return pointer->pixmap_id;
 }
