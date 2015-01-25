@@ -1,0 +1,15 @@
+# *
+# !*.c
+# !*.h
+# !*.scm
+# !*.scd
+# !*.py
+# !test/test_images_correct/*
+# !Makefile
+# !CMakeLists.txt
+.*
+!.gitignore
+*.o
+test/test_images_tmp/*
+test/cvpi_image_mean_test_files/*
+test/valgrind.txt

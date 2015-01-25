@@ -85,20 +85,27 @@ char* cvpi_egl_error_string(EGLint error) {
 /* based on code from egl_brcm_global_image_client.c */
 EGLint cvpi_egl_bytes_per_pixel(enum cvpi_egl_pixel_format pixel_format) {
   switch(pixel_format) {
-   case EGL_PIXEL_FORMAT_ARGB_8888_BRCM:     return 4;
-   case EGL_PIXEL_FORMAT_A_8_BRCM:           return 1;
-   case EGL_PIXEL_FORMAT_ARGB_8888_PRE_BRCM: return 4;
-   case EGL_PIXEL_FORMAT_XRGB_8888_BRCM:     return 4;
-   case EGL_PIXEL_FORMAT_RGB_565_BRCM:       return 2;
-   default:                                  return 0; /* invalid */
+  case EGL_PIXEL_FORMAT_ARGB_8888_BRCM:     return 4;
+  case EGL_PIXEL_FORMAT_A_8_BRCM:           return 1;
+  case EGL_PIXEL_FORMAT_ARGB_8888_PRE_BRCM: return 4;
+  case EGL_PIXEL_FORMAT_XRGB_8888_BRCM:     return 4;
+  case EGL_PIXEL_FORMAT_RGB_565_BRCM:       return 2;
+  default:                                  return 0; /* invalid */
   }
 }
 
 cvpi_egl_settings cvpi_egl_settings_create(void) {
   cvpi_egl_settings egl_settings_p = malloc(sizeof(*egl_settings_p));
+#ifdef CVPI_ERROR_CHECK
+  if(egl_settings_p == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
 
   egl_settings_p->width = EGL_CONFIG_MAX_WIDTH;
   egl_settings_p->height = EGL_CONFIG_MAX_HEIGHT;
+  egl_settings_p->share_context = EGL_NO_CONTEXT;
   egl_settings_p->current_surface_type = cvpi_egl_surface_type_none;
   egl_settings_p->surface_pixmap_create_function = NULL;
   egl_settings_p->surface_window_create_function = NULL;
@@ -106,16 +113,6 @@ cvpi_egl_settings cvpi_egl_settings_create(void) {
   egl_settings_p->surface_window_destroy_function = NULL;
   egl_settings_p->pixel_format = CVPI_EGL_DEFAULT_PIXEL_FORMAT;
   egl_settings_p->pixel_format_brcm = cvpi_egl_pixel_format_brcm_none;
-    /* cvpi_egl_pixel_format_gles2_texture_brcm| */
-    /* cvpi_egl_pixel_format_gles_texture_brcm | */
-    /* cvpi_egl_pixel_format_render_gles2_brcm | */
-    /* cvpi_egl_pixel_format_render_gles_brcm  | */
-    /* cvpi_egl_pixel_format_render_gl_brcm    | */
-    /* cvpi_egl_pixel_format_render_mask_brcm  | */
-    /* cvpi_egl_pixel_format_render_vg_brcm    | */
-    /* cvpi_egl_pixel_format_texture_mask_brcm | */
-    /* cvpi_egl_pixel_format_usage_mask_brcm   | */
-    /* cvpi_egl_pixel_format_vg_image_brcm     ; */
   egl_settings_p->display_id = EGL_DEFAULT_DISPLAY;
   egl_settings_p->buffer_size = EGL_DONT_CARE;
   egl_settings_p->red_size = EGL_DONT_CARE;
@@ -164,19 +161,25 @@ cvpi_egl_settings cvpi_egl_settings_create(void) {
 
 cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
   cvpi_egl_instance egl_instance = malloc(sizeof(*egl_instance));
+#ifdef CVPI_ERROR_CHECK
+  if(egl_instance == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif  
   egl_instance->egl_settings = egl_settings_p;
 
   /* tests needed in multiple places */
   /* if changed, also change in cvpi_egl_instance_takedown */
-  char pixmap_surface_bool = (egl_settings_p->surface_type & EGL_PIXMAP_BIT ||
-      egl_settings_p->current_surface_type == cvpi_egl_surface_type_pixmap) && 
-     egl_settings_p->surface_pixmap_create_function != NULL &&
-     egl_settings_p->surface_pixmap_destroy_function != NULL;
-  char window_surface_bool = (egl_settings_p->surface_type & EGL_WINDOW_BIT ||
-      egl_settings_p->current_surface_type == cvpi_egl_surface_type_window) &&
-     egl_settings_p->surface_pixmap_destroy_function != NULL &&
-     egl_settings_p->surface_window_destroy_function != NULL;
-  char pbuffer_surface_bool = egl_settings_p->surface_type & EGL_PBUFFER_BIT || 
+  char pixmap_surface_bool = 
+    egl_settings_p->current_surface_type == cvpi_egl_surface_type_pixmap && 
+    egl_settings_p->surface_pixmap_create_function != NULL &&
+    egl_settings_p->surface_pixmap_destroy_function != NULL;
+  char window_surface_bool = 
+    egl_settings_p->current_surface_type == cvpi_egl_surface_type_window &&
+    egl_settings_p->surface_pixmap_destroy_function != NULL &&
+    egl_settings_p->surface_window_destroy_function != NULL;
+  char pbuffer_surface_bool = 
     egl_settings_p->current_surface_type == cvpi_egl_surface_type_pbuffer;
 
   /* Used to capture egl succeed/fail return values */
@@ -189,9 +192,9 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
   /* Possible values does not appear to be documented and is probably
      implementation specific. */
   /* Broadcom's implementation only supports one value, the default. */
-  egl_instance->eglDisplay = eglGetDisplay(egl_settings_p->display_id);
-  if(EGL_NO_DISPLAY == egl_instance->eglDisplay) {
-    fprintf(stderr, "%s: eglGetDisplay returned EGL_NO_DISPLAY\n", __func__);
+  egl_instance->egl_display = eglGetDisplay(egl_settings_p->display_id);
+  if(EGL_NO_DISPLAY == egl_instance->egl_display) {
+    fprintf(cvpi_log_file, "%s: eglGetDisplay returned EGL_NO_DISPLAY\n", __func__);
     goto undoBase;
   }
 
@@ -199,17 +202,19 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
   egl_instance->major = CVPI_EGL_VERSION_MAJOR;
   egl_instance->minor = CVPI_EGL_VERSION_MINOR;
   /* initialize the display */
-  good = eglInitialize(egl_instance->eglDisplay, &(egl_instance->major), &(egl_instance->minor));
+  good = eglInitialize(egl_instance->egl_display, &(egl_instance->major), &(egl_instance->minor));
   if(EGL_TRUE != good) {
-    fprintf(stderr, "%s: eglInitialize returned %s\n", __func__, cvpi_egl_error_string(good));
+    fprintf(cvpi_log_file, "%s: eglInitialize returned %s\n", __func__, cvpi_egl_error_string(good));
     goto undoBase;
   }
 
   /* set API to EGL_OPENVG_API or EGL_OPENGL_ES_API */
-  good = eglBindAPI(egl_settings_p->renderable_api);
-  if(EGL_TRUE != good) {
-    fprintf(stderr, "%s: eglBindAPI opengl returned %s\n", __func__, cvpi_egl_error_string(good));
-    goto undoInitialize;
+  if(egl_settings_p->renderable_api != cvpi_egl_renderable_api_current) {
+    good = eglBindAPI(egl_settings_p->renderable_api);
+    if(EGL_TRUE != good) {
+      fprintf(cvpi_log_file, "%s: eglBindAPI opengl returned %s\n", __func__, cvpi_egl_error_string(good));
+      goto undoInitialize;
+    }
   }
 
   /* create an EGLConfig */
@@ -282,26 +287,31 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
   (egl_instance->attrib_list)[66] = EGL_NONE;
 
   /* get the total number of configs matching attrib_list */
-  egl_instance->numberConfigs = 0;
-  good = eglChooseConfig(egl_instance->eglDisplay, egl_instance->attrib_list, NULL, 0, &(egl_instance->numberConfigs));
-  if(1 < egl_instance->numberConfigs) {
-    fprintf(stderr, "%s: eglChooseConfig number of configurations is %d\n", __func__, egl_instance->numberConfigs);
+  EGLint number_configs = 0;
+  good = eglChooseConfig(egl_instance->egl_display, egl_instance->attrib_list, NULL, 0, &(number_configs));
+  if(1 < number_configs) {
+    fprintf(cvpi_log_file, "%s: eglChooseConfig number of configurations is %d\n", __func__, number_configs);
   }
 
   /* TODO: when this error is raised, it currently segfaults. */
-  if(0 == egl_instance->numberConfigs || EGL_TRUE != good) {
-    if(!egl_instance->numberConfigs) {
-      fprintf(stderr, "%s: first call to eglChooseConfig: number of configurations is zero\n", __func__);
+  if(0 == number_configs || EGL_TRUE != good) {
+    if(!number_configs) {
+      fprintf(cvpi_log_file, "%s: first call to eglChooseConfig: number of configurations is zero\n", __func__);
     }
-    fprintf(stderr, "%s: first call to eglChooseConfig returned %s\n", __func__, cvpi_egl_error_string(good));
+    fprintf(cvpi_log_file, "%s: first call to eglChooseConfig returned %s\n", __func__, cvpi_egl_error_string(good));
     goto undoInitialize;
   }
-  /* get a list of matching configs */
-  egl_instance->matchingConfigs = (EGLConfig*)malloc(egl_instance->numberConfigs * sizeof(egl_instance->matchingConfigs));
-  good = eglChooseConfig(egl_instance->eglDisplay, egl_instance->attrib_list, egl_instance->matchingConfigs, egl_instance->numberConfigs, &(egl_instance->numberConfigs));
+  egl_instance->matching_configs = (EGLConfig*)malloc(number_configs * sizeof(egl_instance->matching_configs));
+#ifdef CVPI_ERROR_CHECK
+  if(egl_instance->matching_configs == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    goto undoInitialize;
+  }
+#endif
+  good = eglChooseConfig(egl_instance->egl_display, egl_instance->attrib_list, egl_instance->matching_configs, number_configs, &(number_configs));
 
   if(EGL_TRUE != good) {
-    fprintf(stderr, "%s: second call to eglChooseConfig returned %s\n", __func__, cvpi_egl_error_string(good));
+    fprintf(cvpi_log_file, "%s: second call to eglChooseConfig returned %s\n", __func__, cvpi_egl_error_string(good));
     goto undoChooseConfig;
   }
   
@@ -310,72 +320,70 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
     EGLNativePixmapType pixmap = (egl_settings_p->surface_pixmap_create_function)(egl_instance);
 
     if(pixmap == NULL) {
-      fprintf(stderr, "%s: EGLNativePixmapType function returned NULL pointer.\n", __func__);
+      fprintf(cvpi_log_file, "%s: EGLNativePixmapType function returned NULL pointer.\n", __func__);
       goto undoChooseConfig;
     }
 
     /* create surface */
-    /* not all matchingConfigs truely match so loop untill a matching one is found, bug in eglChooseConfig */
+    /* not all matching_configs truely match so loop untill a matching one is found, bug in eglChooseConfig */
     unsigned int i = 0;
     do {
-      egl_instance->eglPixmapSurface = eglCreatePixmapSurface(egl_instance->eglDisplay, (egl_instance->matchingConfigs)[i], pixmap, egl_settings_p->pixmap_surface_attrib_list);
+      egl_instance->egl_surface = eglCreatePixmapSurface(egl_instance->egl_display, (egl_instance->matching_configs)[i], pixmap, egl_settings_p->pixmap_surface_attrib_list);
       ++i;
-    } while(egl_instance->eglPixmapSurface == EGL_NO_SURFACE && i < egl_instance->numberConfigs);
+    } while(egl_instance->egl_surface == EGL_NO_SURFACE && i < number_configs);
 
     /* see line 998 in egl_client.c */
-    if(egl_instance->eglPixmapSurface == EGL_NO_SURFACE) {
+    if(egl_instance->egl_surface == EGL_NO_SURFACE) {
       good = eglGetError();
-      fprintf(stderr, "%s: pixmap surface creation failed %s %x.\n", __func__, cvpi_egl_error_string(good), good);
+      fprintf(cvpi_log_file, "%s: pixmap surface creation failed %s %x.\n", __func__, cvpi_egl_error_string(good), good);
       goto undoPixmap;
     }
+    egl_instance->matching_config_index = i-1;
   } 
   /* PBUFFER surface */
-  if(pbuffer_surface_bool) {
+  else if(pbuffer_surface_bool) {
     unsigned int i = 0;
     do {
-      egl_instance->eglPbufferSurface = eglCreatePbufferSurface(egl_instance->eglDisplay, 
-								(egl_instance->matchingConfigs)[i], 
-								egl_settings_p->pbuffer_surface_attrib_list);
+      egl_instance->egl_surface = eglCreatePbufferSurface(egl_instance->egl_display, 
+							  (egl_instance->matching_configs)[i], 
+							  egl_settings_p->pbuffer_surface_attrib_list);
       ++i;
-    } while(egl_instance->eglPbufferSurface == EGL_NO_SURFACE && i < egl_instance->numberConfigs);
-    if(egl_instance->eglPbufferSurface == EGL_NO_SURFACE) {
-      fprintf(stderr, "%s: pbuffer surface creation failed %s.\n", __func__, cvpi_egl_error_string(eglGetError()));
+    } while(egl_instance->egl_surface == EGL_NO_SURFACE && i < number_configs);
+    if(egl_instance->egl_surface == EGL_NO_SURFACE) {
+      fprintf(cvpi_log_file, "%s: pbuffer surface creation failed %s.\n", __func__, cvpi_egl_error_string(eglGetError()));
       goto undoPixmap;
     }
-
+    egl_instance->matching_config_index = i-1;
   } 
   /* WINDOW surface */
-  if(window_surface_bool) {
+  else if(window_surface_bool) {
     /* client_egl_get_window not documented */
     EGLNativeWindowType win = (egl_settings_p->surface_window_create_function)(egl_instance);
     if(win == NULL) {
-      fprintf(stderr, "%s: EGLNativeWindowType returned NULL.\n", __func__);
+      fprintf(cvpi_log_file, "%s: EGLNativeWindowType returned NULL.\n", __func__);
       goto undoPixmap;
     }
     
     unsigned int i = 0;
     do {
-      egl_instance->eglWindowSurface = eglCreateWindowSurface(egl_instance->eglDisplay, 
-							      (egl_instance->matchingConfigs)[i], 
-							      win,
-							      egl_settings_p->window_surface_attrib_list);
+      egl_instance->egl_surface = eglCreateWindowSurface(egl_instance->egl_display, 
+							 (egl_instance->matching_configs)[i], 
+							 win,
+							 egl_settings_p->window_surface_attrib_list);
       ++i;
-    } while(egl_instance->eglWindowSurface == EGL_NO_SURFACE && i < egl_instance->numberConfigs);
-    if(egl_instance->eglWindowSurface == EGL_NO_SURFACE) {
-      fprintf(stderr, "%s: pbuffer surface creation failed %s.\n", __func__, cvpi_egl_error_string(eglGetError()));
+    } while(egl_instance->egl_surface == EGL_NO_SURFACE && i < number_configs);
+    if(egl_instance->egl_surface == EGL_NO_SURFACE) {
+      fprintf(cvpi_log_file, "%s: pbuffer surface creation failed %s.\n", __func__, cvpi_egl_error_string(eglGetError()));
       goto undoWindow;
     }
-  } 
-  if(!(egl_settings_p->surface_type & EGL_PIXMAP_BIT) &&
-     !(egl_settings_p->surface_type & EGL_PBUFFER_BIT) &&
-     !(egl_settings_p->surface_type & EGL_WINDOW_BIT) &&
-     egl_settings_p->current_surface_type == cvpi_egl_surface_type_none) {
-    fprintf(stderr, "%s: No surface type selected: %u\n", __func__, egl_settings_p->surface_type);
+    egl_instance->matching_config_index = i-1;
+  } else { 
+    fprintf(cvpi_log_file, "%s: No surface type selected: %u\n", __func__, egl_settings_p->surface_type);
   }
 
-  egl_instance->eglContext = eglCreateContext(egl_instance->eglDisplay, *(egl_instance->matchingConfigs), eglGetCurrentContext(), egl_settings_p->context_attrib_list);
-  if(EGL_NO_CONTEXT == egl_instance->eglContext) {
-    fprintf(stderr, "%s: eglCreateContext returned %s\n", __func__, cvpi_egl_error_string(eglGetError()));
+  egl_instance->egl_context = eglCreateContext(egl_instance->egl_display, egl_instance->matching_configs[egl_instance->matching_config_index], egl_settings_p->share_context, egl_settings_p->context_attrib_list);
+  if(EGL_NO_CONTEXT == egl_instance->egl_context) {
+    fprintf(cvpi_log_file, "%s: eglCreateContext returned %s\n", __func__, cvpi_egl_error_string(eglGetError()));
     goto undoCreateSurface;
   }
 
@@ -384,19 +392,11 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
      requires it and it simplifies the interface. */
   switch(egl_settings_p->current_surface_type) {
   case cvpi_egl_surface_type_pixmap:
-    good = eglMakeCurrent(egl_instance->eglDisplay,
-			  egl_instance->eglPixmapSurface, egl_instance->eglPixmapSurface,
-			  egl_instance->eglContext);
-    break;
   case cvpi_egl_surface_type_pbuffer:
-    good = eglMakeCurrent(egl_instance->eglDisplay,
-			  egl_instance->eglPbufferSurface, egl_instance->eglPbufferSurface,
-			  egl_instance->eglContext);
-    break;
   case cvpi_egl_surface_type_window:
-    good = eglMakeCurrent(egl_instance->eglDisplay,
-			  egl_instance->eglWindowSurface, egl_instance->eglWindowSurface,
-			  egl_instance->eglContext);
+    good = eglMakeCurrent(egl_instance->egl_display,
+			  egl_instance->egl_surface, egl_instance->egl_surface,
+			  egl_instance->egl_context);
     break;
   case cvpi_egl_surface_type_none:
   default:
@@ -404,7 +404,7 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
     break;
   }
   if(EGL_FALSE == good) {
-    fprintf(stderr, "%s: eglMakeCurrent returned false\n", __func__);
+    fprintf(cvpi_log_file, "%s: eglMakeCurrent returned false: %s\n", __func__, cvpi_egl_error_string(eglGetError()));
     goto undoCreateContext;
   }
   return egl_instance;
@@ -412,29 +412,29 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
   /* If there is an error in setup, then take down */
 
  undoCreateContext:
-  good = eglDestroyContext(egl_instance->eglDisplay, egl_instance->eglContext);
+  good = eglDestroyContext(egl_instance->egl_display, egl_instance->egl_context);
   if(EGL_TRUE != good) {
-    fprintf(stderr, "%s: eglDestroyContext returned %s\n", __func__, cvpi_egl_error_string(good));
+    fprintf(cvpi_log_file, "%s: eglDestroyContext returned %s\n", __func__, cvpi_egl_error_string(good));
   }
 
-  undoCreateSurface:
+ undoCreateSurface:
   if(window_surface_bool) {
-    good = eglDestroySurface(egl_instance->eglDisplay, egl_instance->eglWindowSurface);
+    good = eglDestroySurface(egl_instance->egl_display, egl_instance->egl_surface);
     if(EGL_FALSE == good) {
-      fprintf(stderr, "%s: eglDestroySurface Window returned false\n", __func__);
+      fprintf(cvpi_log_file, "%s: eglDestroySurface Window returned false\n", __func__);
     }
   }
 
   if(pixmap_surface_bool) {
-    good = eglDestroySurface(egl_instance->eglDisplay, egl_instance->eglPixmapSurface);
+    good = eglDestroySurface(egl_instance->egl_display, egl_instance->egl_surface);
     if(EGL_FALSE == good) {
-      fprintf(stderr, "%s: eglDestroySurface Pixmap returned false\n", __func__);
+      fprintf(cvpi_log_file, "%s: eglDestroySurface Pixmap returned false\n", __func__);
     }
   }
   if(pbuffer_surface_bool) {
-    good = eglDestroySurface(egl_instance->eglDisplay, egl_instance->eglPbufferSurface);
+    good = eglDestroySurface(egl_instance->egl_display, egl_instance->egl_surface);
     if(EGL_FALSE == good) {
-      fprintf(stderr, "%s: eglDestroySurface Pbuffer returned false\n", __func__);
+      fprintf(cvpi_log_file, "%s: eglDestroySurface Pbuffer returned false\n", __func__);
     }
   }
  undoWindow:
@@ -446,15 +446,14 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
     (egl_settings_p->surface_pixmap_destroy_function)(egl_instance);
   }
 
-  undoChooseConfig:
-  free(egl_instance->matchingConfigs);
-
-  undoInitialize:
-  good = eglTerminate(egl_instance->eglDisplay);
+ undoChooseConfig:
+  free(egl_instance->matching_configs);
+ undoInitialize:
+  good = eglTerminate(egl_instance->egl_display);
   if(EGL_TRUE != good) {
-    fprintf(stderr, "%s: eglTerminate returned %s\n", __func__, cvpi_egl_error_string(good));
+    fprintf(cvpi_log_file, "%s: eglTerminate returned %s\n", __func__, cvpi_egl_error_string(good));
   }
-  undoBase:
+ undoBase:
 
   free(egl_instance);
   //bcm_host_deinit();
@@ -470,49 +469,46 @@ void cvpi_egl_instance_takedown(cvpi_egl_instance deletable) {
   cvpi_egl_settings egl_settings_p = deletable->egl_settings;
   EGLBoolean good = EGL_TRUE;
   /* undo eglInitialize */
-  good = eglDestroyContext(deletable->eglDisplay, deletable->eglContext);
+  good = eglDestroyContext(deletable->egl_display, deletable->egl_context);
   if(EGL_TRUE != good) {
-    fprintf(stderr, "%s: eglDestroyContext returned %s\n", __func__, cvpi_egl_error_string(good));
+    fprintf(cvpi_log_file, "%s: eglDestroyContext returned %s\n", __func__, cvpi_egl_error_string(good));
   }
 
   /* The following tests for each of the three if statements must be
      equivalent to the three tests created at the beginning of
      cvpi_egl_instance_setup.
   */
-  if((egl_settings_p->surface_type & EGL_WINDOW_BIT ||
-      egl_settings_p->current_surface_type == cvpi_egl_surface_type_window) &&
+  if(egl_settings_p->current_surface_type == cvpi_egl_surface_type_window &&
      egl_settings_p->surface_pixmap_destroy_function != NULL &&
      egl_settings_p->surface_window_destroy_function != NULL) {
-    good = eglDestroySurface(deletable->eglDisplay, deletable->eglWindowSurface);
+    good = eglDestroySurface(deletable->egl_display, deletable->egl_surface);
     if(EGL_FALSE == good) {
-      fprintf(stderr, "%s: eglDestroySurface returned false\n", __func__);
+      fprintf(cvpi_log_file, "%s: eglDestroySurface returned false\n", __func__);
     }
     (egl_settings_p->surface_window_destroy_function)(deletable);
   }
 
-  if((egl_settings_p->surface_type & EGL_PIXMAP_BIT ||
-      egl_settings_p->current_surface_type == cvpi_egl_surface_type_pixmap) && 
+  if(egl_settings_p->current_surface_type == cvpi_egl_surface_type_pixmap && 
      egl_settings_p->surface_pixmap_create_function != NULL &&
      egl_settings_p->surface_pixmap_destroy_function != NULL) {
-    good = eglDestroySurface(deletable->eglDisplay, deletable->eglPixmapSurface);
+    good = eglDestroySurface(deletable->egl_display, deletable->egl_surface);
     if(EGL_FALSE == good) {
-      fprintf(stderr, "%s: eglDestroySurface returned false\n", __func__);
+      fprintf(cvpi_log_file, "%s: eglDestroySurface returned false\n", __func__);
     }
     (egl_settings_p->surface_pixmap_destroy_function)(deletable);
   }
-  if(egl_settings_p->surface_type & EGL_PBUFFER_BIT || 
-     egl_settings_p->current_surface_type == cvpi_egl_surface_type_pbuffer) {
-    good = eglDestroySurface(deletable->eglDisplay, deletable->eglPbufferSurface);
+  if(egl_settings_p->current_surface_type == cvpi_egl_surface_type_pbuffer) {
+    good = eglDestroySurface(deletable->egl_display, deletable->egl_surface);
     if(EGL_FALSE == good) {
-      fprintf(stderr, "%s: eglDestroySurface Pbuffer returned false\n", __func__);
+      fprintf(cvpi_log_file, "%s: eglDestroySurface Pbuffer returned false\n", __func__);
     }
   }
 
-  free(deletable->matchingConfigs);
+  free(deletable->matching_configs);
 
-  good = eglTerminate(deletable->eglDisplay);
+  good = eglTerminate(deletable->egl_display);
   if(EGL_TRUE != good) {
-    fprintf(stderr, "%s: eglTerminate returned %s\n", __func__, cvpi_egl_error_string(good));
+    fprintf(cvpi_log_file, "%s: eglTerminate returned %s\n", __func__, cvpi_egl_error_string(good));
   }
   free(deletable);
   //bcm_host_deinit();		/* does not do anything /userland/.../bcm_host.c */
@@ -554,7 +550,7 @@ CVPI_BOOL cvpi_egl_settings_check(cvpi_egl_settings egl_settings_p) {
 
 CVPI_BOOL cvpi_egl_settings_width_check(unsigned long width) {
   if(width > EGL_CONFIG_MAX_WIDTH) {
-    fprintf(stderr, "%s: width must be <= %d.\n", __func__, EGL_CONFIG_MAX_WIDTH);
+    fprintf(cvpi_log_file, "%s: width must be <= %d.\n", __func__, EGL_CONFIG_MAX_WIDTH);
     return CVPI_FALSE;
   } else {
     return CVPI_TRUE;
@@ -572,7 +568,7 @@ CVPI_BOOL cvpi_egl_settings_width(cvpi_egl_settings egl_settings_p, unsigned lon
 
 CVPI_BOOL cvpi_egl_settings_height_check(unsigned long height) {
   if(height > EGL_CONFIG_MAX_HEIGHT) {
-    fprintf(stderr, "%s: height must be <= %d.\n", __func__, EGL_CONFIG_MAX_HEIGHT);
+    fprintf(cvpi_log_file, "%s: height must be <= %d.\n", __func__, EGL_CONFIG_MAX_HEIGHT);
     return CVPI_FALSE;
   } else {
     return CVPI_TRUE;
@@ -600,7 +596,7 @@ CVPI_BOOL cvpi_egl_settings_pixel_format_brcm_check(cvpi_egl_settings cvpi_egl_s
     cvpi_egl_pixel_format_vg_image_brcm     ;
   
   if(cvpi_egl_settings_p->pixel_format_brcm & ~options) {
-    fprintf(stderr, "%s Illegal option.\n", __func__);
+    fprintf(cvpi_log_file, "%s Illegal option.\n", __func__);
     return CVPI_FALSE;
   } else {
     return CVPI_TRUE;
@@ -634,7 +630,7 @@ CVPI_BOOL cvpi_egl_surface_functions_check(cvpi_egl_settings cvpi_egl_settings_p
   if(~(p_c ^ p_d) & ~(w_c ^ w_d)) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: A creation or destroy function exists without its complement.\n", __func__);
+    fprintf(cvpi_log_file, "%s: A creation or destroy function exists without its complement.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -643,7 +639,7 @@ CVPI_BOOL cvpi_egl_settings_buffer_size_check(EGLint buffer_size) {
   if(buffer_size >= 0 || buffer_size == EGL_DONT_CARE) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: buffer_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    fprintf(cvpi_log_file, "%s: buffer_size must be non-negative or EGL_DONT_CARE.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -659,7 +655,7 @@ CVPI_BOOL cvpi_egl_settings_red_size_check(EGLint red_size) {
   if(red_size >= 0 || red_size == EGL_DONT_CARE) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: red_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    fprintf(cvpi_log_file, "%s: red_size must be non-negative or EGL_DONT_CARE.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -675,7 +671,7 @@ CVPI_BOOL cvpi_egl_settings_green_size_check(EGLint green_size) {
   if(green_size >= 0 || green_size == EGL_DONT_CARE) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: green_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    fprintf(cvpi_log_file, "%s: green_size must be non-negative or EGL_DONT_CARE.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -691,7 +687,7 @@ CVPI_BOOL cvpi_egl_settings_blue_size_check(EGLint blue_size) {
   if(blue_size >= 0 || blue_size == EGL_DONT_CARE) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: blue_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    fprintf(cvpi_log_file, "%s: blue_size must be non-negative or EGL_DONT_CARE.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -707,7 +703,7 @@ CVPI_BOOL cvpi_egl_settings_alpha_size_check(EGLint alpha_size) {
   if(alpha_size >= 0 || alpha_size == EGL_DONT_CARE) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: alpha_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    fprintf(cvpi_log_file, "%s: alpha_size must be non-negative or EGL_DONT_CARE.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -723,7 +719,7 @@ CVPI_BOOL cvpi_egl_settings_alpha_mask_size_check(EGLint alpha_size) {
   if(alpha_size >= 0 || alpha_size == EGL_DONT_CARE) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: alpha_mask_size must be non-negative or EGL_DONT_CARE.\n", __func__);
+    fprintf(cvpi_log_file, "%s: alpha_mask_size must be non-negative or EGL_DONT_CARE.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -740,7 +736,7 @@ CVPI_BOOL cvpi_egl_settings_config_id_check(EGLint id) {
   if(id == EGL_DONT_CARE || id >= 1) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Invalid EGL_CONFIG_ID\n", __func__);
+    fprintf(cvpi_log_file, "%s: Invalid EGL_CONFIG_ID\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -756,15 +752,15 @@ CVPI_BOOL cvpi_egl_settings_config_id(cvpi_egl_settings egl_settings_p, EGLint i
 CVPI_BOOL cvpi_egl_settings_conformant_check(cvpi_egl_settings egl_settings_p) {
   if (egl_settings_p->conformant != EGL_DONT_CARE && 
       (egl_settings_p->conformant & ~(EGL_OPENGL_BIT|EGL_OPENGL_ES_BIT|EGL_OPENGL_ES2_BIT|EGL_OPENVG_BIT))) {
-    fprintf(stderr, "%s: Change makes EGL_CONFORMANT value invalid.\n", __func__);
+    fprintf(cvpi_log_file, "%s: Change makes EGL_CONFORMANT value invalid.\n", __func__);
     return CVPI_FALSE;
   } else {
     return CVPI_TRUE;
   }
 }
 CVPI_BOOL cvpi_egl_settings_conformant(cvpi_egl_settings egl_settings_p, 
-					    enum cvpi_egl_conformant_bits bit,
-					    enum cvpi_egl_settings_change change) {
+				       enum cvpi_egl_conformant_bits bit,
+				       enum cvpi_egl_settings_change change) {
   EGLint old_value = egl_settings_p->conformant;
   if(bit != cvpi_egl_conformant_bit_dc) {
     CVPI_CHANGE_TYPE(change, egl_settings_p->conformant, bit);
@@ -784,7 +780,7 @@ CVPI_BOOL cvpi_egl_settings_depth_size_check(EGLint depth_size) {
   if (depth_size == EGL_DONT_CARE || depth_size >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Invalid EGL_DEPTH_SIZE.\n", __func__);
+    fprintf(cvpi_log_file, "%s: Invalid EGL_DEPTH_SIZE.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -805,7 +801,7 @@ CVPI_BOOL cvpi_egl_settings_max_pbuffer_width_check(EGLint width) {
   if (width == EGL_DONT_CARE || width >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Possibly invalid EGL_MAX_PBUFFER_WIDTH.\n", __func__);
+    fprintf(cvpi_log_file, "%s: Possibly invalid EGL_MAX_PBUFFER_WIDTH.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -813,7 +809,7 @@ CVPI_BOOL cvpi_egl_settings_max_pbuffer_height_check(EGLint height) {
   if (height == EGL_DONT_CARE || height >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Possibly invalid EGL_MAX_PBUFFER_HEIGHT.\n", __func__);
+    fprintf(cvpi_log_file, "%s: Possibly invalid EGL_MAX_PBUFFER_HEIGHT.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -821,14 +817,14 @@ CVPI_BOOL cvpi_egl_settings_max_pbuffer_pixels_check(EGLint pixels) {
   if (pixels == EGL_DONT_CARE || pixels >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Possibly invalid EGL_MAX_PBUFFER_PIXELS.\n", __func__);
+    fprintf(cvpi_log_file, "%s: Possibly invalid EGL_MAX_PBUFFER_PIXELS.\n", __func__);
     return CVPI_FALSE;
   }
 }
 
 CVPI_BOOL cvpi_egl_settings_match_native_pixmap_check(EGLint match_native_pixmap) {
   if(match_native_pixmap == EGL_NONE) {
-    fprintf(stderr, "%s: EGL_NONE not supported. \nSee egl_client_config_cr.c\n", __func__);
+    fprintf(cvpi_log_file, "%s: EGL_NONE not supported. \nSee egl_client_config_cr.c\n", __func__);
     return CVPI_FALSE;
   } else {
     return CVPI_TRUE;
@@ -839,7 +835,7 @@ CVPI_BOOL cvpi_egl_settings_max_swap_interval_check(EGLint interval) {
   if(interval == EGL_DONT_CARE || interval >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Invalid EGL_MAX_SWAP_INTERVAL\n", __func__);
+    fprintf(cvpi_log_file, "%s: Invalid EGL_MAX_SWAP_INTERVAL\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -855,7 +851,7 @@ CVPI_BOOL cvpi_egl_settings_min_swap_interval_check(EGLint interval) {
   if(interval == EGL_DONT_CARE || interval >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Invalid EGL_MIN_SWAP_INTERVAL\n", __func__);
+    fprintf(cvpi_log_file, "%s: Invalid EGL_MIN_SWAP_INTERVAL\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -874,33 +870,33 @@ CVPI_BOOL cvpi_egl_settings_renderable_type_check(cvpi_egl_settings egl_settings
     /* check that the pixel format bits make sense for the renderable type */
     if(egl_settings_p->renderable_type & EGL_OPENGL_BIT && 
        !(egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_RENDER_GL_BRCM)) {
-      fprintf(stderr,"%s: Renderable type opengl may require EGL_PIXEL_FORMAT_RENDER_GL_BRCM.\n",__func__);
+      fprintf(cvpi_log_file,"%s: Renderable type opengl may require EGL_PIXEL_FORMAT_RENDER_GL_BRCM.\n",__func__);
     }
     if(egl_settings_p->renderable_type & EGL_OPENGL_ES_BIT &&
        !(egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_RENDER_GLES_BRCM &&
 	 egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_GLES_TEXTURE_BRCM)) {
-      fprintf(stderr,"%s: Renderable type opengl_es may require EGL_PIXEL_FORMAT_RENDER_GLES_BRCM and EGL_PIXEL_FORMAT_GLES_TEXTURE_BRCM.\n",__func__);
+      fprintf(cvpi_log_file,"%s: Renderable type opengl_es may require EGL_PIXEL_FORMAT_RENDER_GLES_BRCM and EGL_PIXEL_FORMAT_GLES_TEXTURE_BRCM.\n",__func__);
     }
     if(egl_settings_p->renderable_type & EGL_OPENGL_ES2_BIT &&
        !(egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_RENDER_GLES2_BRCM &&
 	 egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_GLES2_TEXTURE_BRCM)) {
-      fprintf(stderr,"%s: Renderable type opengl_es2 may require EGL_PIXEL_FORMAT_RENDER_GLES2_BRCM and EGL_PIXEL_FORMAT_GLES2_TEXTURE_BRCM.\n",__func__);
+      fprintf(cvpi_log_file,"%s: Renderable type opengl_es2 may require EGL_PIXEL_FORMAT_RENDER_GLES2_BRCM and EGL_PIXEL_FORMAT_GLES2_TEXTURE_BRCM.\n",__func__);
     }
     if(egl_settings_p->renderable_type & EGL_OPENVG_BIT &&
        !(egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_RENDER_VG_BRCM &&
 	 egl_settings_p->pixel_format_brcm & EGL_PIXEL_FORMAT_VG_IMAGE_BRCM)) {
-      fprintf(stderr,"%s: Renderable type openvg may require EGL_PIXEL_FORMAT_RENDER_VG_BRCM and EGL_PIXEL_FORMAT_VG_IMAGE_BRCM.\n",__func__);
+      fprintf(cvpi_log_file,"%s: Renderable type openvg may require EGL_PIXEL_FORMAT_RENDER_VG_BRCM and EGL_PIXEL_FORMAT_VG_IMAGE_BRCM.\n",__func__);
     }
 
     return CVPI_TRUE;
   } else{
-    fprintf(stderr, "%s: Invalid EGL_RENDERABLE_TYPE.\n", __func__);
+    fprintf(cvpi_log_file, "%s: Invalid EGL_RENDERABLE_TYPE.\n", __func__);
     return CVPI_FALSE;
   }
 }
 CVPI_BOOL cvpi_egl_settings_renderable_type(cvpi_egl_settings egl_settings_p, 
-				       enum cvpi_egl_renderable_bits bit,
-				       enum cvpi_egl_settings_change change) {
+					    enum cvpi_egl_renderable_bits bit,
+					    enum cvpi_egl_settings_change change) {
   EGLint old_type = egl_settings_p->renderable_type;
   CVPI_CHANGE_TYPE(change, egl_settings_p->renderable_type, bit);
   if(CVPI_TRUE_TEST(cvpi_egl_settings_renderable_type_check(egl_settings_p))) {
@@ -915,7 +911,7 @@ CVPI_BOOL cvpi_egl_settings_stencil_size_check(EGLint size) {
   if(size == EGL_DONT_CARE || size >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Invalid EGL_STENCIL_SIZE.\n", __func__);
+    fprintf(cvpi_log_file, "%s: Invalid EGL_STENCIL_SIZE.\n", __func__);
     return CVPI_FALSE;
   }
 }
@@ -930,7 +926,7 @@ CVPI_BOOL cvpi_egl_settings_stencil_size(cvpi_egl_settings cvpi_egl_settings_p, 
 CVPI_BOOL cvpi_egl_settings_surface_type_check(cvpi_egl_settings egl_settings_p) {
   int all_three = (EGL_WINDOW_BIT|EGL_PIXMAP_BIT|EGL_PBUFFER_BIT) & egl_settings_p->surface_type;
   if(!all_three) {
-    fprintf(stderr, "%s: Warning: No surface (window, pixmap, or pbuffer) selected.\n", __func__);
+    fprintf(cvpi_log_file, "%s: Warning: No surface (window, pixmap, or pbuffer) selected.\n", __func__);
   }
 
   int valid_bits = EGL_WINDOW_BIT|EGL_PIXMAP_BIT|EGL_PBUFFER_BIT|
@@ -940,7 +936,7 @@ CVPI_BOOL cvpi_egl_settings_surface_type_check(cvpi_egl_settings egl_settings_p)
   if (egl_settings_p->surface_type == EGL_DONT_CARE || !(egl_settings_p->surface_type & ~valid_bits)) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: EGL_SURFACE_TYPE invalid.\n", __func__);
+    fprintf(cvpi_log_file, "%s: EGL_SURFACE_TYPE invalid.\n", __func__);
     return CVPI_FALSE;
   }
 
@@ -968,7 +964,7 @@ CVPI_BOOL cvpi_egl_settings_transparent_red_value_check(EGLint value) {
   if(value == EGL_DONT_CARE || value >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Invalid EGL_TRANSPARENT_RED_VALUE", __func__);
+    fprintf(cvpi_log_file, "%s: Invalid EGL_TRANSPARENT_RED_VALUE", __func__);
     return CVPI_FALSE;
   }
 }
@@ -984,7 +980,7 @@ CVPI_BOOL cvpi_egl_settings_transparent_green_value_check(EGLint value) {
   if(value == EGL_DONT_CARE || value >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Invalid EGL_TRANSPARENT_GREEN_VALUE", __func__);
+    fprintf(cvpi_log_file, "%s: Invalid EGL_TRANSPARENT_GREEN_VALUE", __func__);
     return CVPI_FALSE;
   }
 }
@@ -1000,7 +996,7 @@ CVPI_BOOL cvpi_egl_settings_transparent_blue_value_check(EGLint value) {
   if(value == EGL_DONT_CARE || value >= 0) {
     return CVPI_TRUE;
   } else {
-    fprintf(stderr, "%s: Invalid EGL_TRANSPARENT_BLUE_VALUE", __func__);
+    fprintf(cvpi_log_file, "%s: Invalid EGL_TRANSPARENT_BLUE_VALUE", __func__);
     return CVPI_FALSE;
   }
 }

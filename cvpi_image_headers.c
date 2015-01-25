@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #endif
 
+#ifndef	_ERRNO_H
+#include <errno.h>
+#endif
+
 #ifndef _MATH_H
 #include <math.h>
 /* abs() */
@@ -9,6 +13,10 @@
 
 #ifndef CVPI_IMAGE_HEADERS
 #include "cvpi_image_headers.h"
+#endif
+
+#ifndef CVPI_BASE
+#include "cvpi_base.h"
 #endif
 
 #define WORD cvpi_word
@@ -308,18 +316,45 @@ void cvpi_bmp_header_write(FILE *write_ptr,
   bmph.bV4GammaGreen = pf.bV4GammaGreen;
   bmph.bV4GammaBlue = pf.bV4GammaBlue;
 
-  fwrite(&bmph, sizeof(bmph), 1, write_ptr);
-  fflush(write_ptr);
+  size_t written = fwrite(&bmph, sizeof(bmph), 1, write_ptr);
+  int flushed = fflush(write_ptr);
+  if(written != sizeof(bmph) || flushed != 0) {
+    if(written != sizeof(bmph)) {
+      fprintf(cvpi_log_file, "%s: Error writing bmp header: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+	      __func__, sizeof(bmph), written);
+    } else {
+      fprintf(cvpi_log_file, "%s: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
+	      __func__, errno, flushed);
+    }
+  }
 }
 
 /* portable bitmap format (PBM) */
 void cvpi_pbm_header_write(FILE *write_ptr, unsigned long width, unsigned long height) {
-  fprintf(write_ptr, "P4\n%ld %ld\n", width, height);
-  fflush(write_ptr);
+  int written = fprintf(write_ptr, "P4\n%ld %ld\n", width, height);
+  int flushed = fflush(write_ptr);
+  if(written < 0 || flushed != 0) {
+    if(written < 0) {
+      fprintf(cvpi_log_file, "%s: Error writing bmp header: fprintf returned:%d.\n",
+	      __func__, written);
+    } else {
+      fprintf(cvpi_log_file, "%s: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
+	      __func__, errno, flushed);
+    }
+  }
 }
 
 /* portable graymap format (PGM) */
 void cvpi_pgm_header_write(FILE *write_ptr, unsigned long width, unsigned long height, unsigned char bits) {
-  fprintf(write_ptr, "P5\n%ld %ld\n%hhd\n", width, height, bits);
-  fflush(write_ptr);
+  int written = fprintf(write_ptr, "P5\n%ld %ld\n%hhd\n", width, height, bits);
+  int flushed = fflush(write_ptr);
+  if(written < 0 || flushed != 0) {
+    if(written < 0) {
+      fprintf(cvpi_log_file, "%s: Error writing bmp header: fprintf returned:%d.\n",
+	      __func__, written);
+    } else {
+      fprintf(cvpi_log_file, "%s: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
+	      __func__, errno, flushed);
+    }
+  }
 }

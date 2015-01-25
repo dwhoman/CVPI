@@ -141,7 +141,12 @@ enum cvpi_egl_config_caveat {
 /* OpenVG is the default for cvpi_egl_settings_create(). */
 enum cvpi_egl_renderable_api {
   cvpi_egl_renderable_api_openvg = EGL_OPENVG_API,
-  cvpi_egl_renderable_api_opengl = EGL_OPENGL_ES_API
+  cvpi_egl_renderable_api_opengl = EGL_OPENGL_ES_API,
+  /* EGL_NONE is a valid argument to eglBindAPI according to the 1.4
+     spec p. 43, but it is unsupported */
+  //  cvpi_egl_renderable_api_none = EGL_NONE,
+  /* If the user does not want to change the current redering API */
+  cvpi_egl_renderable_api_current = 0
 };
 
 /* Allowed bit values for EGL_CONFORMANT, except for EGL_DONT_CARE
@@ -228,9 +233,13 @@ struct cvpi_egl_settings_s {
   unsigned long width;
   unsigned long height;	
   enum cvpi_egl_renderable_api renderable_api;
+  /* which surface will be rendered to */
   enum cvpi_egl_current_surface_type current_surface_type;
   enum cvpi_egl_pixel_format pixel_format;
-  EGLint pixel_format_brcm;	/* additional settings for eglCreateGlobalImageBRCM */
+  EGLint pixel_format_brcm;	/* additional settings for
+				   eglCreateGlobalImageBRCM */
+  /* default: EGL_NO_CONTEXT, passed to eglCreateContext */
+  EGLContext share_context;
 
   /* display_id defaults to EGL_DEFAULT_DISPLAY. There no point in
      changing it because Broadcom's implementation only supports one
@@ -305,6 +314,7 @@ struct cvpi_egl_settings_s {
   EGLint sample_buffers;
   enum cvpi_egl_samples samples;
   EGLint stencil_size;
+  /* supported surfaces */
   EGLint surface_type;
   /* EGL_TRANSPARENT_TYPE is always none */
   enum cvpi_egl_transparent_type transparent_type;
@@ -317,16 +327,18 @@ struct cvpi_egl_settings_s {
 typedef struct cvpi_egl_settings_s* cvpi_egl_settings;
 
 struct cvpi_egl_instance_s {
-  EGLDisplay eglDisplay;	/* set by eglGetDisplay */
-  EGLSurface eglPixmapSurface;	/* set by createPixmapSurface */
-  EGLSurface eglPbufferSurface; /* set by createPbufferSurface */
-  EGLSurface eglWindowSurface;  /* set by createWindowSurface */
-  EGLContext eglContext;	/* set by eglGetCurrentContext */
+  EGLDisplay egl_display;	/* set by eglGetDisplay */
+  EGLSurface egl_surface;	/* set by createPixmapSurface */
+  EGLContext egl_context;	/* set by eglGetCurrentContext */
   EGLint major;			/* system's EGL version = 1.4 */
   EGLint minor;
-  EGLint attrib_list[67];	/* 33 attibutes + EGL_NONE, set by generated header */
-  EGLint numberConfigs;				/* set by eglChooseConfigs */
-  EGLConfig* matchingConfigs;			/* set by eglChooseConfigs */
+  EGLint attrib_list[67];	/* 33 attibutes + EGL_NONE, set by
+				   generated header */
+
+  /* eglChooseConfigs gets a list of matching configs, but not all of
+     them match. The first real matching config is at matching_config_index. */
+  EGLint matching_config_index;
+  EGLConfig* matching_configs;
 
   /* points to the cvpi_egl_settings instance passed into
      cvpi_egl_instance_setup by the user */

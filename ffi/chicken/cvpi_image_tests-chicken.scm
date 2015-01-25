@@ -1,0 +1,5 @@
+(import chicken scheme foreign foreigners openvg cvpi)
+(let ((settings (cvpi_egl_settings_create)))
+  (if (zero? settings)
+      (printf "~A~N"))
+  (free settings))

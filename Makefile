@@ -11,7 +11,8 @@ EGL=-L /opt/vc/lib -I /opt/vc/include/ -I /opt/vc/include/interface/vcos/pthread
 # remove unused code
 size_C=-fdata-sections -ffunction-sections
 SIZE_L=-Wl,--gc-sections
-CC=gcc -Wall
+CC=gcc -g -Wall -Wno-unused-variable -DCVPI_ERROR_CHECK=1
+# -DCVPI_DEBUG=1
 # -std=gnu99 
 
 
@@ -38,20 +39,16 @@ cvpi_egl_config.o: cvpi_egl_config.c
 	$(CC) $(custom) $(BCM) $(EGL) -c $^
 cvpi_vg_ext.o: cvpi_vg_ext.c
 	$(CC) $(custom) $(BCM) $(EGL) -c $^
-cvpi_camera_setup.o: cvpi_camera_setup.c
-	$(CC) -c $^
 cvpi_image_headers.o: cvpi_image_headers.c
 	$(CC) $(custom) $(BCM) $(EGL) -c $^
 cvpi_egl_surface_functions.o: cvpi_egl_surface_functions.c
 	$(CC) $(custom) $(BCM) $(EGL) -c $^
-cvpi_egl_surface_functions_expand: cvpi_egl_surface_functions.c
-	$(CC) -E $(custom) $(BCM) $(EGL) -o cvpi_egl_surface_functions_expand.c $^
 cvpi_image_functions.o: cvpi_image_functions.c
 	$(CC) $(custom) $(BCM) $(EGL) -c $^
-cvpi: cvpi_egl_config.o cvpi_vg_ext.o cvpi_camera_setup.o\
+cvpi: cvpi_egl_config.o cvpi_vg_ext.o\
 	 cvpi_image_headers.o cvpi_egl_surface_functions.o cvpi_image_functions.o
 clean:
-	rm cvpi_egl_config.o cvpi_vg_ext.o cvpi_camera_setup.o cvpi_image_headers.o\
+	rm cvpi_egl_config.o cvpi_vg_ext.o cvpi_image_headers.o\
 	 cvpi_egl_surface_functions.o cvpi_image_functions.o
 
 # testing programs
@@ -79,3 +76,7 @@ eglconfigtest: eglInterface cvpi_egl_config.c eglConfigTest.c vgConfig.c
 # returns a CSV string to stdout of EGL configurations
 eglGetConfigs: 
 	$(CC) -Wall $(EGL) -o eglGetConfigs eglGetConfigs.c
+cvpi_chicken: cvpi cvpi_image_tests-chicken.scm openvg-chicken.scd cvpi-chicken.scd
+	csc -d2 -c openvg-chicken.scd $(BCM) $(EGL) -I /opt/vc/include/VG/
+#	csc -s cvpi-chicken.scd -j test $(BCM) $(EGL) openvg-chicken.c
+#	csc -d2 $(BCM) $(EGL) -o cvpi_image_tests-chicken cvpi_image_tests-chicken.scm openvg-chicken.o cvpi-chicken.o

@@ -41,69 +41,6 @@ const VGfloat cvpi_invert_colors[20] = {
   1, 1, 1, 0
 };
 
-/* const VGfloat cvpi_yuva2rgba[20] = { */
-/*   0.114, 0.436, -0.10001, 0, */
-/*   0.587, -0.28886, -0.51499, 0, */
-/*   0.299, -0.14713, 0.615, 0, */
-/*   0, 0, 0, 1, */
-
-/*   0,0,0,0 */
-/* }; */
-
-/* const VGfloat cvpi_yuva2rgba[20] = { */
-/*   1.13983, -0.58060, 0, 0, */
-/*   0, -0.39465, 2.03211, 0, */
-/*   1,1,1, 0, */
-/*   0, 0, 0, 1, */
-
-/*   0,0,0,0 */
-/* }; */
-
-/* const VGfloat cvpi_yuva2rgba[20] = { */
-/*   0.973144457819, 0.719239470131, 1.31169880462, 0,  */
-/*   -1.12804050453, 1.06693956671, -0.08068512399, 0, */
-/*   1.10742216975, -0.876957879887, -0.246795216736, 0, */
-/*   0,0,0,1, */
-
-/*   0,0,0,0 */
-/* }; */
-
-/* const VGfloat cvpi_yuva2rgba[20] = { */
-/*   0.973144457819, -1.12804050453, 1.10742216975, 0,  */
-/*   0.719239470131, 1.06693956671, -0.876957879887, 0, */
-/*   1.31169880462, -0.08068512399, -0.246795216736, 0, */
-/*   0,0,0,1, */
-
-/*   0,0,0,0 */
-/* }; */
-
-/* const VGfloat cvpi_yuva2rgba[20] = { */
-/*   1, 1, 1, 0, */
-/*   0, -0.21482, 2.12798, 0, */
-/*   1.28033, -0.38059, 0, 0, */
-/*   0, 0, 0, 1, */
-
-/*   0,0,0,0 */
-/* }; */
-
-/* const VGfloat cvpi_yuva2rgba[20] = { */
-/*   1, 1, 1, 0, */
-/*   0, -0.39465, 2.03211, 0, */
-/*   1.13983, -0.58060, 0, 0, */
-/*   0, 0, 0, 1, */
-
-/*   0,0,0,0 */
-/* }; */
-
-/* const VGfloat cvpi_yuva2rgba[20] = { */
-/*   1, 0,  1.13983, 0, */
-/*   1, -0.39465, -0.58060, 0, */
-/*   1, 2.03211, 0, 0, */
-/*   0, 0, 0, 1, */
-
-/*   0,0,0,0 */
-/* }; */
-
 const VGfloat cvpi_avuy2ayuv[20] = {
   0, 0, 1, 0,
   0, 1, 0, 0,
@@ -207,8 +144,34 @@ const VGshort cvpi_filter_roberts_cross_x[4] = {0,-1,
 const VGshort cvpi_filter_roberts_cross_y[4] = {1,0,
 						0,-1};
 
+#define cvpi_vg_error_check()\
+  do {\
+  VGErrorCode error = vgGetError();\
+  if(error != VG_NO_ERROR) {\
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error)); \
+  }\
+  } while(0)
 
-VGImage cvpi_yuyv2yuva(VGImage yuyv_image) {
+VGImage cvpi_yuyv2yuva(const VGImage yuyv_image) {
+
+  VGErrorCode error;
+
+  VGint yuyv_width = vgGetParameteri(yuyv_image, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
+  VGint height = vgGetParameteri(yuyv_image, VG_IMAGE_HEIGHT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   const VGfloat yuyv2yuva_conversion_1[20] = {
   0, 0, 0, 1,
   0, 1, 0, 0,
@@ -225,68 +188,192 @@ VGImage cvpi_yuyv2yuva(VGImage yuyv_image) {
   0,0,0,0
   };
 
-  VGint yuyv_width = vgGetParameteri(yuyv_image, VG_IMAGE_WIDTH);
-  VGint height = vgGetParameteri(yuyv_image, VG_IMAGE_HEIGHT);
   VGint yuva_width = yuyv_width*2;
 
   unsigned long itter;
 
   VGImage mod_image_1 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage mod_image_2 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(mod_image_1);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage mod_image_3 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-  VGImage mod_image_4 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(mod_image_1);
+    vgDestroyImage(mod_image_2);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
+  VGImage mod_image_4 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(mod_image_1);
+    vgDestroyImage(mod_image_2);
+    vgDestroyImage(mod_image_3);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   /* set red in RGBA to 255 */
   vgLookup(mod_image_1, yuyv_image, cvpi_255_array, cvpi_identity_array, cvpi_identity_array, cvpi_identity_array, OUTPUT_LINEAR, VG_FALSE);
+#ifdef CVPI_PEDANTIC
+  /* Should never error, all pre-conditions are covered. Might internally run out of memory if not in place. */
+  cvpi_vg_error_check();
+#endif
 
   /* set blue in RGBA to 255 */
   vgLookup(mod_image_2, yuyv_image, cvpi_identity_array, cvpi_identity_array, cvpi_255_array, cvpi_identity_array, OUTPUT_LINEAR, VG_FALSE);
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
   vgFinish();
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
 
   vgColorMatrix(mod_image_3, mod_image_1, yuyv2yuva_conversion_1);
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
   vgColorMatrix(mod_image_4, mod_image_2, yuyv2yuva_conversion_2);
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
   vgFinish();
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
 
   /* images no longer needed */
   vgDestroyImage(mod_image_1);
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
   vgDestroyImage(mod_image_2);
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
 
   VGImage output_image = vgCreateImage(CVPI_COLOR_SPACE, yuva_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    output_image = VG_INVALID_HANDLE;
+    goto cvpi_yuyv2yuva_skip_loop;
+  }
+#endif
 
   /* merge mod 3,4 images */
   for(itter = 0; itter < yuyv_width; ++itter) {
     vgCopyImage(output_image, itter*2, 0, mod_image_3, itter, 0, 1, height, VG_FALSE);
+#ifdef CVPI_PEDANTIC
+    cvpi_vg_error_check();
+#endif
     vgCopyImage(output_image, itter*2+1, 0, mod_image_4, itter, 0, 1, height, VG_FALSE);
+#ifdef CVPI_PEDANTIC
+    cvpi_vg_error_check();
+#endif
     vgFinish();
+#ifdef CVPI_PEDANTIC
+    cvpi_vg_error_check();
+#endif
   }
+ cvpi_yuyv2yuva_skip_loop:
   vgDestroyImage(mod_image_3);
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
   vgDestroyImage(mod_image_4);
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
   vgFlush();
+#ifdef CVPI_PEDANTIC
+  cvpi_vg_error_check();
+#endif
   return output_image;
 }
 
-VGImage cvpi_add_images(VGImage img1, VGImage img2, VGshort a, VGshort b, VGfloat scale, VGfloat bias) {
+VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGshort b, VGfloat scale, VGfloat bias) {
 /* add_images adds two images by adding the upper halves and the lower
    halves separately.  Done this way so that the intermediate image
    does not exceed allowable dimensions. */
 
   /* TODO: images of height 1024 or less can be added using a single image buffer */
+  VGErrorCode error;
 
   VGint img1_width = vgGetParameteri(img1, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint img1_height = vgGetParameteri(img1, VG_IMAGE_HEIGHT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   VGint img2_width = vgGetParameteri(img2, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint img2_height = vgGetParameteri(img2, VG_IMAGE_HEIGHT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   if(img1_width != img2_width || img1_height != img2_height) {
-    fprintf(stderr, "add_images: Images have differing dimensions:\nimg1: %dx%d\nimg2: %dx%d\n",
-	    img1_width, img1_height, img2_width, img2_height);
+    fprintf(cvpi_log_file, "%s: Images have differing dimensions:\nimg1: %dx%d\nimg2: %dx%d\n",
+	    __func__, img1_width, img1_height, img2_width, img2_height);
     return VG_INVALID_HANDLE;
   }
 
   VGshort kernel[2] = {b,a};	/* only place where `a' and `b' are used */
   unsigned long itter = 0;
   VGImage output = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
+
   if(2*img1_height > EGL_CONFIG_MAX_HEIGHT) {
     VGImage half;			/* image half original */
     VGImage half_c;		/* image half convolved */
@@ -295,14 +382,67 @@ VGImage cvpi_add_images(VGImage img1, VGImage img2, VGshort a, VGshort b, VGfloa
     VGint max;
     if(!(img1_height % 2)) { 	/* even height */
       half = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	return VG_INVALID_HANDLE;
+      }
+#endif
       half_c = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	vgDestroyImage(half);
+	vgFlush();
+	return VG_INVALID_HANDLE;
+      }
+#endif
       max = img1_height;
     } else {                      /* odd height */
       last_row = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	return VG_INVALID_HANDLE;
+      }
+#endif
       last_row_c = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	vgDestroyImage(last_row);
+	vgFlush();
+	return VG_INVALID_HANDLE;
+      }
+#endif
       if(img1_height > 1) {
 	half = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height-1, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+	error = vgGetError();
+	if(error != VG_NO_ERROR) {
+	  fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	  vgDestroyImage(last_row);
+	  vgDestroyImage(last_row_c);
+	  vgFlush();
+	  return VG_INVALID_HANDLE;
+	}
+#endif
 	half_c = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height-1, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+	error = vgGetError();
+	if(error != VG_NO_ERROR) {
+	  fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	  vgDestroyImage(last_row);
+	  vgDestroyImage(last_row_c);
+	  vgDestroyImage(half);
+	  vgFlush();
+	  return VG_INVALID_HANDLE;
+	}
+#endif
 	max = img1_height-1;
       } else {			/* 1 pixel high image */
 	max = 0;
@@ -358,7 +498,23 @@ VGImage cvpi_add_images(VGImage img1, VGImage img2, VGshort a, VGshort b, VGfloa
 
     /* combine the two images */
     VGImage both = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2*img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	return VG_INVALID_HANDLE;
+      }
+#endif
     VGImage added = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2*img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	vgDestroyImage(added);
+	vgFlush();
+	return VG_INVALID_HANDLE;
+      }
+#endif
     for(; itter < img1_height; ++itter) {
       vgCopyImage(both, 0, 2*itter, img1, 0, itter, img1_width, 1, VG_FALSE);
       vgCopyImage(both, 0, 2*itter+1, img2, 0, itter, img1_width, 1, VG_FALSE);
@@ -382,14 +538,44 @@ VGImage cvpi_add_images(VGImage img1, VGImage img2, VGshort a, VGshort b, VGfloa
   return output;
 }
 
-VGImage cvpi_add_channels(VGImage image, VGImageChannel channel1, VGImageChannel channel2,
+VGImage cvpi_add_channels(const VGImage image, VGImageChannel channel1, VGImageChannel channel2,
 			  VGshort a, VGshort b, VGfloat scale, VGfloat bias, VGbitfield output_channels) {
   /* Could rewrite this function to do the computation just using vgColorMatrix */
+  VGErrorCode error;
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage channel1_img = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	return VG_INVALID_HANDLE;
+      }
+#endif
   VGImage channel2_img = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	vgDestroyImage(channel1_img);
+	vgFlush();
+	return VG_INVALID_HANDLE;
+      }
+#endif
   /* Copy the channel to be added to all of the other channels */
   VGfloat copy_channel1[20] = {
     0,0,0,0,
@@ -472,8 +658,17 @@ VGImage cvpi_add_channels(VGImage image, VGImageChannel channel1, VGImageChannel
   /* add the channels */
   VGImage result = cvpi_add_images(channel1_img, channel2_img, a, b, scale, bias);
   vgFinish();
+#ifdef CVPI_ERROR_CHECK
+      if(result == VG_INVALID_HANDLE) {
+	fprintf(cvpi_log_file, "%s:%d:Unable to add channels\n", __func__, __LINE__);
+	vgDestroyImage(channel1_img);
+	vgDestroyImage(channel2_img);
+	vgFlush();
+	return VG_INVALID_HANDLE;
+      }
+#endif
 
-  if(output_channels == (VG_RED | VG_GREEN | VG_BLUE | VG_ALPHA)) {
+  if(output_channels == (VG_RED | VG_GREEN | VG_BLUE | VG_ALPHA) || result == VG_INVALID_HANDLE) {
     vgDestroyImage(channel1_img);
     vgDestroyImage(channel2_img);
     vgFlush();
@@ -488,8 +683,9 @@ VGImage cvpi_add_channels(VGImage image, VGImageChannel channel1, VGImageChannel
   }
 }
 
-VGImage cvpi_add_channels_color(VGImage image, VGfloat scale_r, VGfloat scale_g,
+VGImage cvpi_add_channels_color(const VGImage image, VGfloat scale_r, VGfloat scale_g,
 				VGfloat scale_b, VGfloat bias, VGbitfield output_channels) {
+  VGErrorCode error;
   VGfloat matrix[20] = {
     1,0,0,0,
     0,1,0,0,
@@ -527,14 +723,21 @@ VGImage cvpi_add_channels_color(VGImage image, VGfloat scale_r, VGfloat scale_g,
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
   VGImage output = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	return VG_INVALID_HANDLE;
+      }
+#endif
   vgColorMatrixNormal(output, image, matrix);
   vgFinish();
   return output;
 }
 
-VGImage cvpi_add_channels_all(VGImage image, VGfloat scale_r, VGfloat scale_g,
+VGImage cvpi_add_channels_all(const VGImage image, VGfloat scale_r, VGfloat scale_g,
 			      VGfloat scale_b, VGfloat scale_a,VGfloat bias, VGbitfield output_channels) {
+  VGErrorCode error;
   VGfloat matrix[20] = {
     1,0,0,0,
     0,1,0,0,
@@ -575,22 +778,56 @@ VGImage cvpi_add_channels_all(VGImage image, VGfloat scale_r, VGfloat scale_g,
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
   VGImage output = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	return VG_INVALID_HANDLE;
+      }
+#endif
   vgColorMatrixNormal(output, image, matrix);
   vgFinish();
   return output;
 }
 
-VGImage cvpi_combine_channelwise(VGImage img1, VGImage img2, VGbitfield img1_channels) {
+VGImage cvpi_combine_channelwise(const VGImage img1, const VGImage img2, VGbitfield img1_channels) {
+  VGErrorCode error;
   VGint img1_width = vgGetParameteri(img1, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint img1_height = vgGetParameteri(img1, VG_IMAGE_HEIGHT);
-
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint img2_width = vgGetParameteri(img2, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint img2_height = vgGetParameteri(img2, VG_IMAGE_HEIGHT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   if(img1_width != img2_width || img1_height != img2_height) {
-    fprintf(stderr, "add_images: Images have differing dimensions:\nimg1: %dx%d\nimg2: %dx%d\n",
-	    img1_width, img1_height, img2_width, img2_height);
+    fprintf(cvpi_log_file, "%s: Images have differing dimensions:\nimg1: %dx%d\nimg2: %dx%d\n",
+	    __func__, img1_width, img1_height, img2_width, img2_height);
     return VG_INVALID_HANDLE;
   }
 
@@ -614,19 +851,41 @@ VGImage cvpi_combine_channelwise(VGImage img1, VGImage img2, VGbitfield img1_cha
   };
 
   VGImage img1_filtered = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage img2_filtered = vgCreateImage(CVPI_COLOR_SPACE, img2_width, img2_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(img1_filtered);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   vgColorMatrix(img1_filtered, img1, img1_channel_matrix);
   vgColorMatrix(img2_filtered, img2, img2_channel_matrix);
   vgFinish();
   VGImage output = cvpi_add_images(img1_filtered, img2_filtered, 1, 1, 1, 0);
+  vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  if(output == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:Unable to add channels\n", __func__, __LINE__);
+  }
+#endif
   vgDestroyImage(img1_filtered);
   vgDestroyImage(img2_filtered);
   vgFlush();
   return output;
 }
 
-VGImage cvpi_channel_threshold(VGImage image, VGImageChannel channel,
+VGImage cvpi_channel_threshold(const VGImage image, VGImageChannel channel,
 			       VGubyte bound1, VGubyte bound2,
 			       VGubyte fill, CVPI_BOOL invert) {
   VGubyte upper = bound1 > bound2 ? bound1 : bound2;
@@ -653,14 +912,36 @@ VGImage cvpi_channel_threshold(VGImage image, VGImageChannel channel,
       }
     }
   }
+  VGErrorCode error;
   VGint img1_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint img1_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage output = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
-  VGubyte* red_array = VG_RED == channel ? threshold_array : cvpi_identity_array;
-  VGubyte* green_array = VG_GREEN == channel ? threshold_array : cvpi_identity_array;
-  VGubyte* blue_array = VG_BLUE == channel ? threshold_array : cvpi_identity_array;
-  VGubyte* alpha_array = VG_ALPHA == channel ? threshold_array : cvpi_identity_array;
+  const VGubyte* red_array = VG_RED == channel ? threshold_array : cvpi_identity_array;
+  const VGubyte* green_array = VG_GREEN == channel ? threshold_array : cvpi_identity_array;
+  const VGubyte* blue_array = VG_BLUE == channel ? threshold_array : cvpi_identity_array;
+  const VGubyte* alpha_array = VG_ALPHA == channel ? threshold_array : cvpi_identity_array;
 
   vgLookup(output, image,
 	   red_array,
@@ -673,9 +954,9 @@ VGImage cvpi_channel_threshold(VGImage image, VGImageChannel channel,
 }
 
 
-VGImage cvpi_image_threshold(VGImage image,
-			     VGubyte* lower_bound, VGubyte* upper_bound,
-			     VGubyte* fill, CVPI_BOOL* invert, CVPI_BOOL dependent) {
+VGImage cvpi_image_threshold(const VGImage image,
+			     const VGubyte* lower_bound, const VGubyte* upper_bound,
+			     const VGubyte* fill, const CVPI_BOOL* invert, CVPI_BOOL dependent) {
   VGubyte threshold_array[4][256];
 
   unsigned int i = 0;
@@ -738,10 +1019,31 @@ VGImage cvpi_image_threshold(VGImage image,
       }
     }
   }
+  VGErrorCode error;
   VGint img1_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint img1_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage output = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   vgLookup(output, image,
 	   threshold_array[0],
 	   threshold_array[1],
@@ -752,14 +1054,27 @@ VGImage cvpi_image_threshold(VGImage image,
   return output;
 }
 
-
-VGImage cvpi_image_threshold_sector(VGImage image, unsigned int sector_width, unsigned int sector_height, VGubyte* fill, CVPI_BOOL* invert, CVPI_BOOL dependent, VGuint (*statistic)(VGImage image)) {
+VGImage cvpi_image_threshold_sector(const VGImage image, unsigned int sector_width, unsigned int sector_height, const VGubyte* fill, const CVPI_BOOL* invert, CVPI_BOOL dependent, const VGuint (*statistic)(const VGImage image)) {
 
   VGubyte invert_array[4] = {0,0,0,0};
 
+  VGErrorCode error;
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
-
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   if(sector_width > image_width) {
     sector_width = image_width;
   } else if(sector_width == 0) {
@@ -784,13 +1099,20 @@ VGImage cvpi_image_threshold_sector(VGImage image, unsigned int sector_width, un
   int thin_sector_num = image_width / sector_width;
 
   VGImage output_image = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   cvpi_pixel sector_threshold;
 
   sector_threshold.all = 0;
 
   int i = 0;
   int j = 0;
+  VGImage sector_image;
   /* threshold normal sectors */
   for(; i < short_sector_num; ++i) {
     for(; j < thin_sector_num; ++j) {
@@ -799,12 +1121,23 @@ VGImage cvpi_image_threshold_sector(VGImage image, unsigned int sector_width, un
 						    sector_width, sector_height));
       vgFinish();
       /* threshold the sector and insert it into the output image */
+      sector_image = cvpi_image_threshold(vgChildImage(image, i*sector_width, j*sector_height,
+						       sector_width, sector_height),
+					  invert_array,
+					  sector_threshold.channel,
+					  fill, invert, dependent);
+#ifdef CVPI_ERROR_CHECK
+      if(sector_image == VG_INVALID_HANDLE) {
+	fprintf(cvpi_log_file, "%s:%d:Unable to threshold sector\n", __func__, __LINE__);
+	vgDestroyImage(output_image);
+	vgFlush();
+	return sector_image;
+      }
+#endif
       vgCopyImage(output_image, i*sector_width, j*sector_height,
-		  cvpi_image_threshold(vgChildImage(image, i*sector_width, j*sector_height, sector_width, sector_height),
-				       invert_array,
-				       sector_threshold.rgba,
-				       fill, invert, dependent),
+		  sector_image,
 		  0, 0, sector_width, sector_height, VG_FALSE);
+      vgDestroyImage(sector_image);
       vgFinish();
     }
   }
@@ -815,12 +1148,23 @@ VGImage cvpi_image_threshold_sector(VGImage image, unsigned int sector_width, un
     sector_threshold.all = statistic(vgChildImage(image, image_width - thinness,
 						  j*sector_height, thinness, sector_height));
     vgFinish();
-      vgCopyImage(output_image, image_width - thinness, j*sector_height,
-		  cvpi_image_threshold(vgChildImage(image, image_width - thinness, j*sector_height, thinness, sector_height),
-				       invert_array,
-				       sector_threshold.rgba,
-				       fill, invert, dependent),
-		  0, 0, thinness, sector_height, VG_FALSE);
+    sector_image = cvpi_image_threshold(vgChildImage(image, image_width - thinness, j*sector_height,
+						     thinness, sector_height),
+					invert_array,
+					sector_threshold.channel,
+					fill, invert, dependent);
+#ifdef CVPI_ERROR_CHECK
+      if(sector_image == VG_INVALID_HANDLE) {
+	fprintf(cvpi_log_file, "%s:%d:Unable to threshold sector\n", __func__, __LINE__);
+	vgDestroyImage(output_image);
+	vgFlush();
+	return sector_image;
+      }
+#endif
+    vgCopyImage(output_image, image_width - thinness, j*sector_height,
+		sector_image,
+		0, 0, thinness, sector_height, VG_FALSE);
+    vgDestroyImage(sector_image);
     vgFinish();
   }
 
@@ -828,13 +1172,24 @@ VGImage cvpi_image_threshold_sector(VGImage image, unsigned int sector_width, un
   for(i = 0; i < short_sector_num; ++i) {
     sector_threshold.all = statistic(vgChildImage(image, i*sector_width, image_height - shortness,
 						  sector_width, shortness));
-      vgFinish();
+    vgFinish();
+    sector_image = cvpi_image_threshold(vgChildImage(image, i*sector_width, image_height - shortness, 
+						     sector_width, shortness),
+					invert_array,
+					sector_threshold.channel,
+					fill, invert, dependent);
+#ifdef CVPI_ERROR_CHECK
+      if(sector_image == VG_INVALID_HANDLE) {
+	fprintf(cvpi_log_file, "%s:%d:Unable to threshold sector\n", __func__, __LINE__);
+	vgDestroyImage(output_image);
+	vgFlush();
+	return sector_image;
+      }
+#endif
     vgCopyImage(output_image, i*sector_width, image_height - shortness,
-		cvpi_image_threshold(vgChildImage(image, i*sector_width, image_height - shortness, sector_width, shortness),
-				     invert_array,
-				     sector_threshold.rgba,
-				     fill, invert, dependent),
-		  0, 0, sector_width, shortness, VG_FALSE);
+		sector_image,
+		0, 0, sector_width, shortness, VG_FALSE);
+    vgDestroyImage(sector_image);
     vgFinish();
   }
 
@@ -842,18 +1197,29 @@ VGImage cvpi_image_threshold_sector(VGImage image, unsigned int sector_width, un
   sector_threshold.all = statistic(vgChildImage(image, image_width - thinness, image_height - shortness,
 						thinness, shortness));
   vgFinish();
+  sector_image = cvpi_image_threshold(vgChildImage(image, image_width - thinness, image_height - shortness,
+						   thinness, shortness),
+				      invert_array,
+				      sector_threshold.channel,
+				      fill, invert, dependent);
+#ifdef CVPI_ERROR_CHECK
+      if(sector_image == VG_INVALID_HANDLE) {
+	fprintf(cvpi_log_file, "%s:%d:Unable to threshold sector\n", __func__, __LINE__);
+	vgDestroyImage(output_image);
+	vgFlush();
+	return sector_image;
+      }
+#endif
   vgCopyImage(output_image, image_width - thinness, image_height - shortness,
-	      cvpi_image_threshold(vgChildImage(image, image_width - thinness, image_height - shortness, thinness, shortness),
-				   invert_array,
-				   sector_threshold.rgba,
-				   fill, invert, dependent),
+	      sector_image,
 	      0, 0, thinness, shortness, VG_FALSE);
+  vgDestroyImage(sector_image);
   vgFinish();
 
   return output_image;
 }
 
-VGImage cvpi_image_channel_mask(VGImage image, VGImageChannel maskChannel, CVPI_BOOL add) {
+VGImage cvpi_image_channel_mask(const VGImage image, VGImageChannel maskChannel, CVPI_BOOL add) {
   VGfloat matrix[20] = {
     1,0,0,0,
     0,1,0,0,
@@ -887,26 +1253,67 @@ VGImage cvpi_image_channel_mask(VGImage image, VGImageChannel maskChannel, CVPI_
     matrix[14] = mask_value;			/* alpha */
     break;
   }
+  VGErrorCode error;
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage output_image = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   vgColorMatrix(output_image, image, matrix);
   vgFinish();
   return output_image;
 }
 
-VGImage cvpi_image_mean_gpu(VGImage image) {
+VGImage cvpi_image_mean_gpu(const VGImage image) {
   /* See project.org (heading: image mean) for detailed description of
      the algorithm being used. */
-
+  VGErrorCode error;
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
-
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGshort kernel[2] = {1,1};
 
   VGImage mean_image;
   VGImage first_image = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   vgFinish();
   vgCopyImage(first_image, 0, 0, image, 0, 0, image_width, image_height, VG_FALSE);
   vgFinish();
@@ -922,12 +1329,29 @@ VGImage cvpi_image_mean_gpu(VGImage image) {
   while(1 < image_height) {
     --image_height;
     mean_image = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(first_image);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
     vgConvolveNormal(mean_image, first_image, 1, 2, 0, 0, kernel, 0.5, 0, VG_TILE_PAD);
     vgFinish();
     vgDestroyImage(first_image);
     vgFinish();
     first_image = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(mean_image);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
     /* remove the last row of the resulting image */
 
     vgCopyImage(first_image, 0, 0, mean_image, 0, 0, image_width, image_height, VG_FALSE);
@@ -937,6 +1361,7 @@ VGImage cvpi_image_mean_gpu(VGImage image) {
     debug_memory = malloc(4*image_height*image_width);
     vgGetImageSubData(first_image, debug_memory,
 		      4*image_width, CVPI_COLOR_SPACE, 0, 0, image_width, image_height);
+    free(debug_memory);
 #endif
     vgDestroyImage(mean_image);
     vgFinish();
@@ -958,6 +1383,15 @@ VGImage cvpi_image_mean_gpu(VGImage image) {
 #endif
     --image_width;
     mean_image = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(first_image);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
     vgConvolveNormal(mean_image, first_image, 2, 1, 0, 0, kernel, 0.5, 0, VG_TILE_PAD);
     vgFinish();
 #ifdef CVPI_DEBUG
@@ -969,6 +1403,15 @@ VGImage cvpi_image_mean_gpu(VGImage image) {
     vgDestroyImage(first_image);
     vgFinish();
     first_image = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(mean_image);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
     vgFinish();
     vgCopyImage(first_image, 0, 0, mean_image, 0, 0, image_width, image_height, VG_FALSE);
     vgFinish();
@@ -982,54 +1425,90 @@ VGImage cvpi_image_mean_gpu(VGImage image) {
     vgDestroyImage(mean_image);
     vgFinish();
   }
-  vgDestroyImage(mean_image);
+  //  vgDestroyImage(mean_image);
 
   return first_image;
 }
 
-VGImage cvpi_image_mean_arithmetic(VGImage image) {
+VGImage cvpi_image_mean_arithmetic(const VGImage image) {
+  VGErrorCode error;
   VGint width = vgGetParameteri(image, VG_IMAGE_WIDTH);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGint height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImageFormat imageFormat = (VGImageFormat)vgGetParameteri(image, VG_IMAGE_FORMAT);
+#ifdef CVPI_PEDANTIC
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   VGint pixel_bytes = vgPixelBits(imageFormat)/8;
 
   unsigned long image_size = width * height;
   unsigned long image_mem_size = pixel_bytes * image_size;
   unsigned char* image_cpu = malloc(image_mem_size);
+#ifdef CVPI_ERROR_CHECK
+  if(image_cpu == NULL) {
+    fprintf(cvpi_log_file, "%s: malloc returned NULL: errno = %d\n", __func__, errno);
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   vgGetImageSubData(image, (void*)image_cpu, pixel_bytes, imageFormat, 0, 0, width, height);
 
-  unsigned long average_rgba[4] = {0,0,0,0};
+  unsigned long average_channel[4] = {0,0,0,0};
 
   /* currently only works with VGImageFormat = VG_*_8888 */
   cvpi_pixel offsets;
-  offsets.rgba[0] = 0;
-  offsets.rgba[1] = 1;
-  offsets.rgba[2] = 2;
-  offsets.rgba[3] = 3;
+  offsets.channel[0] = 0;
+  offsets.channel[1] = 1;
+  offsets.channel[2] = 2;
+  offsets.channel[3] = 3;
 
   unsigned long i = 0;
 
   for(; i < image_mem_size; i += pixel_bytes) {
-    average_rgba[0] += *(image_cpu + i + offsets.rgba[0]);
-    average_rgba[1] += *(image_cpu + i + offsets.rgba[1]);
-    average_rgba[2] += *(image_cpu + i + offsets.rgba[2]);
-    average_rgba[3] += *(image_cpu + i + offsets.rgba[3]);
+    average_channel[0] += *(image_cpu + i + offsets.channel[0]);
+    average_channel[1] += *(image_cpu + i + offsets.channel[1]);
+    average_channel[2] += *(image_cpu + i + offsets.channel[2]);
+    average_channel[3] += *(image_cpu + i + offsets.channel[3]);
   }
 
-  average_rgba[0] /= image_size;
-  average_rgba[1] /= image_size;
-  average_rgba[2] /= image_size;
-  average_rgba[3] /= image_size;
+  average_channel[0] /= image_size;
+  average_channel[1] /= image_size;
+  average_channel[2] /= image_size;
+  average_channel[3] /= image_size;
 
   /* reuse offsets */
-  offsets.rgba[0] = average_rgba[0] > 255 ? 255 : average_rgba[0];
-  offsets.rgba[1] = average_rgba[1] > 255 ? 255 : average_rgba[1];
-  offsets.rgba[2] = average_rgba[2] > 255 ? 255 : average_rgba[2];
-  offsets.rgba[3] = average_rgba[3] > 255 ? 255 : average_rgba[3];
+  offsets.channel[0] = average_channel[0] > 255 ? 255 : average_channel[0];
+  offsets.channel[1] = average_channel[1] > 255 ? 255 : average_channel[1];
+  offsets.channel[2] = average_channel[2] > 255 ? 255 : average_channel[2];
+  offsets.channel[3] = average_channel[3] > 255 ? 255 : average_channel[3];
 
   VGImage pixel = vgCreateImage(CVPI_COLOR_SPACE, 1, 1, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    free(image_cpu);
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   vgImageSubData(pixel, &offsets, CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, 1, 1);
 
@@ -1041,13 +1520,30 @@ VGImage cvpi_image_mean_arithmetic(VGImage image) {
 }
 
 
-VGImage cvpi_image_rgba_to_bw(VGImage image, VGImageChannel sourceChannel, CVPI_BOOL true_color) {
+VGImage cvpi_image_rgba_to_bw(const VGImage image, VGImageChannel sourceChannel, CVPI_BOOL true_color) {
+  VGErrorCode error;
   VGint img1_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint img1_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
   VGImageFormat imageFormat = (VGImageFormat)vgGetParameteri(image, VG_IMAGE_FORMAT);
 
   VGImage bw = vgCreateImage(VG_BW_1, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage intermediate = vgCreateImage(imageFormat, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(bw);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   const VGuint* array = CVPI_TRUE_TEST(true_color) ? cvpi_binary_array : cvpi_binary_array_inverted;
   vgLookupSingle(intermediate, image, array, sourceChannel, OUTPUT_LINEAR, VG_FALSE);
@@ -1059,17 +1555,33 @@ VGImage cvpi_image_rgba_to_bw(VGImage image, VGImageChannel sourceChannel, CVPI_
   return bw;
 }
 
-static VGImage cvpi_image_logcial_common(VGImage image1, VGImage image2,
+static VGImage cvpi_image_logcial_common(const VGImage image1, const VGImage image2,
 					 VGubyte true_value1, VGubyte true_value2,
 					 VGubyte true_color, VGubyte false_color, CVPI_BOOL nonzero_true) {
+  VGErrorCode error;
   VGint img1_width = vgGetParameteri(image1, VG_IMAGE_WIDTH);
   VGint img1_height = vgGetParameteri(image1, VG_IMAGE_HEIGHT);
   //  VGint img2_width = vgGetParameteri(image2, VG_IMAGE_WIDTH);
   //  VGint img2_height = vgGetParameteri(image2, VG_IMAGE_HEIGHT);
 
   VGImage image1_scaled = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage image2_scaled = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(image1_scaled);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   static const VGubyte cvpi_binary_array_img1[256] = {0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
   static const VGubyte cvpi_binary_array_img2[256] = {0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2};
   static const VGubyte cvpi_binary_array_img1_i[256] = {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
@@ -1117,20 +1629,22 @@ static VGImage cvpi_image_logcial_common(VGImage image1, VGImage image2,
   VGImage sum = cvpi_add_images(image1_scaled, image2_scaled, 1,1,1,0);
   vgFinish();
 
+#ifdef CVPI_ERROR_CHECK
+  if(sum == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:Add images failed\n", __func__, __LINE__);
+    vgDestroyImage(image1_scaled);
+    vgDestroyImage(image2_scaled);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
+
 #ifdef CVPI_DEBUG
   debug_memory = malloc(4*img1_height*img1_width);
   vgGetImageSubData(sum, (void*)debug_memory,
 		   4*img1_width, CVPI_COLOR_SPACE, 0, 0, img1_width, img1_height);
   free(debug_memory);
 #endif
-
-  if(sum == VG_INVALID_HANDLE) {
-    vgDestroyImage(image1_scaled);
-    vgDestroyImage(image2_scaled);
-    vgDestroyImage(sum);
-    return VG_INVALID_HANDLE;
-  }
-
   VGubyte logic_array[256];
 
   int i = 0;
@@ -1155,39 +1669,40 @@ static VGImage cvpi_image_logcial_common(VGImage image1, VGImage image2,
   return image1_scaled;
 }
 
-inline VGImage cvpi_image_logical_and(VGImage image1, VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+inline VGImage cvpi_image_logical_and(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logcial_common(image1, image2, 3, 3, t_c, f_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_nand(VGImage image1, VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+inline VGImage cvpi_image_logical_nand(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_and(image1, image2, f_c, t_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_nor(VGImage image1, VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+inline VGImage cvpi_image_logical_nor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logcial_common(image1, image2, 0, 0, t_c, f_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_or(VGImage image1, VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+inline VGImage cvpi_image_logical_or(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_nor(image1, image2, f_c, t_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_xor(VGImage image1, VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+inline VGImage cvpi_image_logical_xor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logcial_common(image1, image2, 1, 2, t_c, f_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_xnor(VGImage image1, VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+inline VGImage cvpi_image_logical_xnor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_xor(image1, image2, f_c, t_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_complement(VGImage image1, VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+inline VGImage cvpi_image_logical_complement(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logcial_common(image1, image2, 1, 1, t_c, f_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_complement_inv(VGImage image1, VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+inline VGImage cvpi_image_logical_complement_inv(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_complement(image1, image2, f_c, t_c, nonzero_true);
 }
 
-static VGImage cvpi_image_morph_common(VGImage image, const VGshort * kernel, CVPI_BOOL nonzero_true) {
+static VGImage cvpi_image_morph_common(const VGImage image, const VGshort * kernel, CVPI_BOOL nonzero_true) {
+  VGErrorCode error;
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
   // VGint fill_color_size = vgGetVectorSize(VG_TILE_FILL_COLOR);
@@ -1195,8 +1710,23 @@ static VGImage cvpi_image_morph_common(VGImage image, const VGshort * kernel, CV
   // VGfloat * new_fill = calloc(fill_color_size, sizeof(* new_fill));
 
   VGImage binary = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage convolved = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(binary);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGubyte logic_array[256];
   VGubyte true_color, false_color;
   if(CVPI_TRUE_TEST(nonzero_true)) {
@@ -1236,14 +1766,30 @@ static VGImage cvpi_image_morph_common(VGImage image, const VGshort * kernel, CV
   return convolved;
 }
 
-VGImage cvpi_image_dialate(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_dialate(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   const VGshort kernel[9] = {1,1,1,
 			     1,1,1,
 			     1,1,1};
+  VGErrorCode error;
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
   VGImage convolved = cvpi_image_morph_common(image, kernel, nonzero_true);
+#ifdef CVPI_ERROR_CHECK
+  if(convolved == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_morph_common failed\n", __func__, __LINE__);
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage dialated = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(convolved);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   VGubyte dialation[256];
   int i = 0;
@@ -1261,15 +1807,32 @@ VGImage cvpi_image_dialate(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL no
   return dialated;
 }
 
-VGImage cvpi_image_erode(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_erode(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   const VGshort kernel[9] = {1,1,1,
 			     1,1,1,
 			     1,1,1};
+  VGErrorCode error;
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
   VGImage convolved = cvpi_image_morph_common(image, kernel, nonzero_true);
+  vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  if(convolved == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_morph_common failed\n", __func__, __LINE__);
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage eroded = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+  vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  error = vgGetError();
+  if(error != VG_NO_ERROR) {
+    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    vgDestroyImage(convolved);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGubyte erosion[256];
   int i = 0;
   for(; i < 256; ++i) {
@@ -1286,7 +1849,7 @@ VGImage cvpi_image_erode(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonz
   return eroded;
 }
 
-VGImage cvpi_image_hit_miss(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_hit_miss(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   const VGshort kernel0[9] = {0,1,0,
 			      0,1,1,
 			      0,0,0};
@@ -1302,15 +1865,73 @@ VGImage cvpi_image_hit_miss(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL n
   //  VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   //  VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
   VGImage convolved0 = cvpi_image_morph_common(image, kernel0, nonzero_true);
+  vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  if(convolved0 == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_morph_common failed\n", __func__, __LINE__);
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage convolved1 = cvpi_image_morph_common(image, kernel1, nonzero_true);
+  vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  if(convolved1 == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_morph_common failed\n", __func__, __LINE__);
+    vgDestroyImage(convolved0);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage convolved2 = cvpi_image_morph_common(image, kernel2, nonzero_true);
+  vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  if(convolved2 == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_morph_common failed\n", __func__, __LINE__);
+    vgDestroyImage(convolved0);
+    vgDestroyImage(convolved1);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage convolved3 = cvpi_image_morph_common(image, kernel3, nonzero_true);
   vgFinish();
-
+#ifdef CVPI_ERROR_CHECK
+  if(convolved3 == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_morph_common failed\n", __func__, __LINE__);
+    vgDestroyImage(convolved0);
+    vgDestroyImage(convolved1);
+    vgDestroyImage(convolved2);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage or01 = cvpi_image_logical_or(convolved0, convolved1, t_c, f_c, nonzero_true);
+  vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  if(or01 == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_logical_or failed\n", __func__, __LINE__);
+    vgDestroyImage(convolved0);
+    vgDestroyImage(convolved1);
+    vgDestroyImage(convolved2);
+    vgDestroyImage(convolved3);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage or23 = cvpi_image_logical_or(convolved2, convolved3, t_c, f_c, nonzero_true);
   vgFinish();
-
+#ifdef CVPI_ERROR_CHECK
+  if(or23 == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_logical_or failed\n", __func__, __LINE__);
+    vgDestroyImage(convolved0);
+    vgDestroyImage(convolved1);
+    vgDestroyImage(convolved2);
+    vgDestroyImage(convolved3);
+    vgDestroyImage(or01);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage or0123 = cvpi_image_logical_or(or01, or23, t_c, f_c, nonzero_true);
   vgFinish();
 
@@ -1324,9 +1945,15 @@ VGImage cvpi_image_hit_miss(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL n
   return or0123;
 }
 
-VGImage cvpi_image_thin(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_thin(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   VGImage hm = cvpi_image_hit_miss(image, t_c, f_c, nonzero_true);
   vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  if(hm == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_hit_miss failed\n", __func__, __LINE__);
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage thinned = cvpi_image_logical_complement(image, hm, t_c, f_c, nonzero_true);
   vgFinish();
   vgDestroyImage(hm);
@@ -1334,9 +1961,15 @@ VGImage cvpi_image_thin(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonze
   return thinned;
 }
 
-VGImage cvpi_image_thicken(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_thicken(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   VGImage hm = cvpi_image_hit_miss(image, t_c, f_c, nonzero_true);
   vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  if(hm == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:cvpi_image_hit_miss failed\n", __func__, __LINE__);
+    return VG_INVALID_HANDLE;
+  }
+#endif
   VGImage thickened = cvpi_image_logical_or(image, hm, t_c, f_c, nonzero_true);
   vgFinish();
   vgDestroyImage(hm);
@@ -1344,15 +1977,31 @@ VGImage cvpi_image_thicken(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL no
   return thickened;
 }
 
-static VGubyte* channel_to_data(VGImage image, VGImageChannel channel) {
+static VGubyte* channel_to_data(const VGImage image, VGImageChannel channel) {
+  VGErrorCode error;
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
 
   VGImage mono = vgCreateImage(VG_A_8, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
-
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	return NULL;
+      }
+#endif
   if(channel != VG_ALPHA) {
     /* put the desired channel data into alpha */
     VGImage alpha = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	vgDestroyImage(mono);
+	vgFlush();
+	return NULL;
+      }
+#endif
     /* matrix by default switches red to alpha */
     VGfloat alpha_switch[20] = {
       0, 0, 0, 1,
@@ -1383,20 +2032,32 @@ static VGubyte* channel_to_data(VGImage image, VGImageChannel channel) {
   }
   vgFinish();
 
-  VGubyte* data = malloc(image_height * image_width * sizeof(VGubyte));
+  VGubyte* data = malloc(image_height * image_width * sizeof(*data));
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
   /* copy the data from alpha into memory */
-  vgGetImageSubData(mono, (void*)data, image_width * sizeof(VGubyte), VG_A_8, 0, 0, image_width, image_height);
+  vgGetImageSubData(mono, (void*)data, image_width * sizeof(*data), VG_A_8, 0, 0, image_width, image_height);
   vgFinish();
   vgDestroyImage(mono);
   vgFlush();
   return data;
 }
 
-VGubyte cvpi_channel_max(VGImage image, VGImageChannel channel) {
+VGubyte cvpi_channel_max(const VGImage image, VGImageChannel channel) {
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
 
   VGubyte* data = channel_to_data(image, channel);
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: channel_to_data returned NULL\n", __func__, __LINE__);
+    return 0;
+  }
+#endif
 
   VGubyte max = 0;
   unsigned long i = 0;
@@ -1415,11 +2076,17 @@ VGubyte cvpi_channel_max(VGImage image, VGImageChannel channel) {
   return max;
 }
 
-VGubyte cvpi_channel_min(VGImage image, VGImageChannel channel) {
+VGubyte cvpi_channel_min(const VGImage image, VGImageChannel channel) {
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
 
   VGubyte* data = channel_to_data(image, channel);
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: channel_to_data returned NULL\n", __func__, __LINE__);
+    return 0;
+  }
+#endif
 
   VGubyte min = 255;
   unsigned long i = 0;
@@ -1438,11 +2105,17 @@ VGubyte cvpi_channel_min(VGImage image, VGImageChannel channel) {
   return min;
 }
 
-VGubyte* cvpi_channel_max_min(VGImage image, VGImageChannel channel) {
+VGubyte* cvpi_channel_max_min(const VGImage image, VGImageChannel channel) {
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
 
   VGubyte* data = channel_to_data(image, channel);
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: channel_to_data returned NULL\n", __func__, __LINE__);
+    return NULL;
+  }
+#endif
 
   VGubyte min = 255;
   VGubyte max = 0;
@@ -1463,20 +2136,38 @@ VGubyte* cvpi_channel_max_min(VGImage image, VGImageChannel channel) {
   free(data);
 
   VGubyte* ret_val = malloc(sizeof(VGubyte)*2);
-
+#ifdef CVPI_ERROR_CHECK
+  if(ret_val == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
   ret_val[0] = max;
   ret_val[1] = min;
 
   return ret_val;
 }
 
-unsigned int* cvpi_channel_histogram(VGImage image, VGImageChannel channel) {
+unsigned int* cvpi_channel_histogram(const VGImage image, VGImageChannel channel) {
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
 
   VGubyte* data = channel_to_data(image, channel);
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: channel_to_data returned NULL\n", __func__, __LINE__);
+    return NULL;
+  }
+#endif
 
   unsigned int* histogram = calloc(256, sizeof(*histogram));
+#ifdef CVPI_ERROR_CHECK
+  if(histogram == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: calloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    free(data);
+    return NULL;
+  }
+#endif
   int i, size;
   size = image_width * image_height;
   for(i = 0; i < size; ++i) {
@@ -1488,7 +2179,7 @@ unsigned int* cvpi_channel_histogram(VGImage image, VGImageChannel channel) {
   return histogram;
 }
 
-unsigned int* cvpi_color_channels_histogram(VGImage image) {
+unsigned int* cvpi_color_channels_histogram(const VGImage image) {
 
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
@@ -1496,21 +2187,34 @@ unsigned int* cvpi_color_channels_histogram(VGImage image) {
   unsigned int stride = CVPI_PIXEL_BYTES * image_width;
 
   cvpi_pixel* data = malloc(stride * image_height);
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
 
   vgGetImageSubData(image, (void*)data,
 		    stride, CVPI_COLOR_SPACE,
 		    0, 0, image_width, image_height);
 
   unsigned int* histogram = calloc(768, sizeof(*histogram));
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    free(data);
+    return NULL;
+  }
+#endif
   int i, size;
   size = image_width * image_height;
 
   unsigned char* pixel;
   vgFinish();
   for(i = 0; i < size; ++i) {
-    histogram[data[i].rgba[cvpi_pixel_red]]++;
-    histogram[data[i].rgba[cvpi_pixel_green] + 256]++;
-    histogram[data[i].rgba[cvpi_pixel_blue] + 512]++;
+    histogram[data[i].channel[cvpi_pixel_red]]++;
+    histogram[data[i].channel[cvpi_pixel_green] + 256]++;
+    histogram[data[i].channel[cvpi_pixel_blue] + 512]++;
   }
 
   free(data);
@@ -1518,28 +2222,41 @@ unsigned int* cvpi_color_channels_histogram(VGImage image) {
   return histogram;
 }
 
-unsigned int* cvpi_image_histogram(VGImage image) {
+unsigned int* cvpi_image_histogram(const VGImage image) {
   /* max value of a column is 2048*2048 = 4194304 */
   VGint image_width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint image_height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
   unsigned int stride = CVPI_PIXEL_BYTES * image_width;
   cvpi_pixel* data = malloc(stride * image_height);
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
 
   vgGetImageSubData(image, (void*)data,
 		    stride, CVPI_COLOR_SPACE,
 		    0, 0, image_width, image_height);
 
   unsigned int* histogram = calloc(1024, sizeof(*histogram));
+#ifdef CVPI_ERROR_CHECK
+  if(histogram == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: calloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    free(data);
+    return NULL;
+  }
+#endif
   int i, size;
   size = image_width * image_height;
 
   unsigned char* pixel;
   vgFinish();
   for(i = 0; i < size; ++i) {
-    histogram[data[i].rgba[cvpi_pixel_red]]++;
-    histogram[data[i].rgba[cvpi_pixel_green] + 256]++;
-    histogram[data[i].rgba[cvpi_pixel_blue] + 512]++;
-    histogram[data[i].rgba[cvpi_pixel_alpha] + 768]++;
+    histogram[data[i].channel[cvpi_pixel_red]]++;
+    histogram[data[i].channel[cvpi_pixel_green] + 256]++;
+    histogram[data[i].channel[cvpi_pixel_blue] + 512]++;
+    histogram[data[i].channel[cvpi_pixel_alpha] + 768]++;
   }
 
   free(data);
@@ -1547,10 +2264,16 @@ unsigned int* cvpi_image_histogram(VGImage image) {
   return histogram;
 }
 
-double* cvpi_channel_cumulative_distribution(unsigned int* histogram, VGint width, VGint height) {
+double* cvpi_channel_cumulative_distribution(const unsigned int* histogram, VGint width, VGint height) {
   double N = width * height;
   unsigned long accumulate = 0;
   double* cd = malloc(sizeof(*cd) * 256);
+#ifdef CVPI_ERROR_CHECK
+  if(cd == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
   int i = 0;
   for(; i < 256; ++i) {
     cd[i] = (accumulate += histogram[i])/N;
@@ -1559,12 +2282,18 @@ double* cvpi_channel_cumulative_distribution(unsigned int* histogram, VGint widt
   return cd;
 }
 
-double* cvpi_color_channels_cumulative_distribution(unsigned int* histogram, VGint width, VGint height) {
+double* cvpi_color_channels_cumulative_distribution(const unsigned int* histogram, VGint width, VGint height) {
   double N = width * height;
   unsigned long accumulate_r = 0;
   unsigned long accumulate_g = 0;
   unsigned long accumulate_b = 0;
   double* cd = malloc(sizeof(*cd) * 768);
+#ifdef CVPI_ERROR_CHECK
+  if(cd == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
   int i = 0;
   for(; i < 256; ++i) {
     cd[i] = (accumulate_r += histogram[i])/N;
@@ -1575,13 +2304,22 @@ double* cvpi_color_channels_cumulative_distribution(unsigned int* histogram, VGi
   return cd;
 }
 
-double* cvpi_image_cumulative_distribution(unsigned int* histogram, VGint width, VGint height) {
+double* cvpi_image_cumulative_distribution(const unsigned int* histogram, VGint width, VGint height) {
   double N = width * height;
   unsigned long accumulate_r = 0;
   unsigned long accumulate_g = 0;
   unsigned long accumulate_b = 0;
   unsigned long accumulate_a = 0;
   double* cd = malloc(sizeof(*cd) * 1024);
+#ifdef CVPI_ERROR_CHECK
+  if(cd == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
+  if(cd == NULL) {
+    return NULL;
+  }
   int i = 0;
   for(; i < 256; ++i) {
     cd[i] = (accumulate_r += histogram[i])/N;
@@ -1593,17 +2331,17 @@ double* cvpi_image_cumulative_distribution(unsigned int* histogram, VGint width,
   return cd;
 }
 
-VGImage cvpi_magnitude(VGImage image1, VGImage image2, enum cvpi_integer_truncation trunc) {
+VGImage cvpi_magnitude(const VGImage image1, const VGImage image2, enum cvpi_integer_truncation trunc) {
+  VGErrorCode error;
   VGint img1_width = vgGetParameteri(image1, VG_IMAGE_WIDTH);
   VGint img1_height = vgGetParameteri(image1, VG_IMAGE_HEIGHT);
   VGint img2_width = vgGetParameteri(image2, VG_IMAGE_WIDTH);
   VGint img2_height = vgGetParameteri(image2, VG_IMAGE_HEIGHT);
 
   if(img1_width != img2_width || img1_height != img2_height) {
-    fprintf(stderr, "%s: Images have differing dimensions:\nimg1: %dx%d\nimg2: %dx%d\n", __func__,
+    fprintf(cvpi_log_file, "%s: Images have differing dimensions:\nimg1: %dx%d\nimg2: %dx%d\n", __func__,
 	    img1_width, img1_height, img2_width, img2_height);
     return VG_INVALID_HANDLE;
-
   }
 
   /* 255/sqrt(127.5) */
@@ -1621,7 +2359,23 @@ VGImage cvpi_magnitude(VGImage image1, VGImage image2, enum cvpi_integer_truncat
   const static VGubyte cvpi_square_array_scaled_round[256] = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,7,7,7,7,8,8,8,8,9,9,9,9,10,10,10,10,11,11,11,12,12,12,13,13,13,14,14,14,15,15,15,16,16,16,17,17,17,18,18,18,19,19,20,20,20,21,21,22,22,22,23,23,24,24,25,25,25,26,26,27,27,28,28,29,29,30,30,31,31,32,32,33,33,34,34,35,35,36,36,37,37,38,38,39,40,40,41,41,42,42,43,44,44,45,45,46,47,47,48,48,49,50,50,51,51,52,53,53,54,55,55,56,57,57,58,59,59,60,61,61,62,63,64,64,65,66,66,67,68,69,69,70,71,72,72,73,74,75,75,76,77,78,78,79,80,81,82,82,83,84,85,86,86,87,88,89,90,91,91,92,93,94,95,96,97,98,98,99,100,101,102,103,104,105,106,106,107,108,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,128 };
 
   VGImage img1_2 = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	return VG_INVALID_HANDLE;
+      }
+#endif
   VGImage img2_2 = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#ifdef CVPI_ERROR_CHECK
+      error = vgGetError();
+      if(error != VG_NO_ERROR) {
+	fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+	vgDestroyImage(img1_2);
+	vgFlush();
+	return VG_INVALID_HANDLE;
+      }
+#endif
 
   const VGubyte* square_function;
   const VGubyte* sqrt_function;
@@ -1639,7 +2393,7 @@ VGImage cvpi_magnitude(VGImage image1, VGImage image2, enum cvpi_integer_truncat
     sqrt_function = cvpi_sqrt_array_round;
     break;
   default:			/* should never happen */
-    fprintf(stderr, "%s:Bad truncation type, using rounding.\n", __func__);
+    fprintf(cvpi_log_file, "%s:Bad truncation type, using rounding.\n", __func__);
     square_function = cvpi_square_array_scaled_round;
     sqrt_function = cvpi_sqrt_array_round;
     break;
@@ -1652,6 +2406,16 @@ VGImage cvpi_magnitude(VGImage image1, VGImage image2, enum cvpi_integer_truncat
   vgLookup(img2_2, image2, square_function,square_function,square_function,square_function, OUTPUT_LINEAR, VG_FALSE);
   /* add */
   VGImage sum = cvpi_add_images(img1_2, img2_2, 1, 1, 1, 0);
+  vgFinish();
+#ifdef CVPI_ERROR_CHECK
+  if(sum == VG_INVALID_HANDLE) {
+    fprintf(cvpi_log_file, "%s:%d:Add images failed\n", __func__, __LINE__);
+    vgDestroyImage(img1_2);
+    vgDestroyImage(sum);
+    vgFlush();
+    return VG_INVALID_HANDLE;
+  }
+#endif
 
   /* map sum to sqrt function, reuse imag1_2 */
   vgLookup(img1_2, sum, sqrt_function,sqrt_function,sqrt_function,sqrt_function, OUTPUT_LINEAR, VG_FALSE);
@@ -1667,14 +2431,27 @@ VGImage cvpi_magnitude(VGImage image1, VGImage image2, enum cvpi_integer_truncat
   return img2_2;
 }
 
-cvpi_coordinate_table* cvpi_image_coordinate_table(VGImage image, VGbitfield channels) {
+cvpi_coordinate_table* cvpi_image_coordinate_table(const VGImage image, VGbitfield channels) {
   VGint width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
 
   VGint stride = CVPI_PIXEL_BYTES * width;
 
   cvpi_pixel* data = malloc(sizeof(*data) * width * height);
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
   cvpi_coordinate* coordinates = malloc(sizeof(*coordinates) * height * width);
+#ifdef CVPI_ERROR_CHECK
+  if(coordinates == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    free(data);
+    return NULL;
+  }
+#endif
 
   vgGetImageSubData(image, (void*)data, stride, CVPI_COLOR_SPACE, 0, 0, width, height);
   vgFinish();
@@ -1710,10 +2487,10 @@ cvpi_coordinate_table* cvpi_image_coordinate_table(VGImage image, VGbitfield cha
   unsigned long i = 0;
   unsigned long j = 0;
   for(; i < width*height; ++i) {
-    if((data[i].rgba[cvpi_pixel_red] && r)
-       || (data[i].rgba[cvpi_pixel_green] && g)
-       || (data[i].rgba[cvpi_pixel_blue] && b)
-       || (data[i].rgba[cvpi_pixel_alpha] && a)) {
+    if((data[i].channel[cvpi_pixel_red] && r)
+       || (data[i].channel[cvpi_pixel_green] && g)
+       || (data[i].channel[cvpi_pixel_blue] && b)
+       || (data[i].channel[cvpi_pixel_alpha] && a)) {
       coordinates[j].xy[0] = w;
       coordinates[j].xy[1] = h;
       ++j;
@@ -1726,7 +2503,27 @@ cvpi_coordinate_table* cvpi_image_coordinate_table(VGImage image, VGbitfield cha
     }
   }
 
+  if(j < i) {
+    cvpi_coordinate* crdnts_realloc = realloc(coordinates, sizeof(*coordinates) * j);
+
+    if(crdnts_realloc != coordinates) {
+      fprintf(cvpi_log_file, "%s:%d: realloc does not point to the same memory:\noriginal = %p\nnew = %p\n errno = %d\n", __func__, __LINE__, coordinates, crdnts_realloc, errno);
+      free(data);
+      free(coordinates);
+      return NULL;
+    }
+
+  }
+
   cvpi_coordinate_table *cv = malloc(sizeof(*cv));
+#ifdef CVPI_ERROR_CHECK
+  if(cv == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    free(data);
+    free(coordinates);
+    return NULL;
+  }
+#endif
   cv->coordinates = coordinates;
   cv->length = j;
 
@@ -1744,10 +2541,23 @@ void cvpi_image_coordinate_table_destroy(cvpi_coordinate_table *cv) {
   }
 }
 
-cvpi_precise_coordinate_table* cvpi_coordinate_table_lens_correct(cvpi_coordinate_table *ct, 
+cvpi_precise_coordinate_table* cvpi_coordinate_table_lens_correct(const cvpi_coordinate_table *ct, 
 								  double k1, double k2, double p1, double p2, double k3) {
   cvpi_precise_coordinate* coordinates = malloc(sizeof(*coordinates) * ct->length);
+#ifdef CVPI_ERROR_CHECK
+  if(coordinates == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
   cvpi_precise_coordinate_table* ct_out = malloc(sizeof(*ct_out));
+#ifdef CVPI_ERROR_CHECK
+  if(ct_out == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    free(coordinates);
+    return NULL;
+  }
+#endif
   ct_out->length = ct->length;
 
   unsigned long i = 0;
@@ -1780,9 +2590,32 @@ cvpi_precise_coordinate_table* cvpi_coordinate_table_lens_correct(cvpi_coordinat
   return ct_out;
 }
 
-cvpi_polar_coordinate_table* cvpi_image_polar_coordinate_table(cvpi_coordinate_table *cv) {
+void cvpi_precise_coordinate_table_destroy(cvpi_precise_coordinate_table *coordinate_table) {
+  if(coordinate_table != NULL) {
+    if(coordinate_table->coordinates != NULL) {
+      free(coordinate_table->coordinates);
+      coordinate_table->coordinates = NULL;
+    }
+    free(coordinate_table);
+  }
+}
+
+cvpi_polar_coordinate_table* cvpi_image_polar_coordinate_table(const cvpi_coordinate_table *cv) {
   cvpi_polar_coordinate* pc = malloc(sizeof(*pc) * cv->length);
+#ifdef CVPI_ERROR_CHECK
+  if(pc == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
   cvpi_polar_coordinate_table* pct = malloc(sizeof(*pct));
+#ifdef CVPI_ERROR_CHECK
+  if(pct == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    free(pc);
+    return NULL;
+  }
+#endif
 
   unsigned long i = 0;
 
@@ -1799,9 +2632,22 @@ cvpi_polar_coordinate_table* cvpi_image_polar_coordinate_table(cvpi_coordinate_t
   return pct;
 }
 
-cvpi_polar_coordinate_table* cvpi_image_polar_coordinate_table_les_corrected(cvpi_precise_coordinate_table *cv) {
+cvpi_polar_coordinate_table* cvpi_image_polar_coordinate_table_lens_corrected(const cvpi_precise_coordinate_table *cv) {
   cvpi_polar_coordinate* pc = malloc(sizeof(*pc) * cv->length);
+#ifdef CVPI_ERROR_CHECK
+  if(pc == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
   cvpi_polar_coordinate_table* pct = malloc(sizeof(*pct));
+#ifdef CVPI_ERROR_CHECK
+  if(pct == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    free(pc);
+    return NULL;
+  }
+#endif
 
   unsigned long i = 0;
 
@@ -1828,38 +2674,63 @@ void cvpi_image_polar_coordinate_table_destroy(cvpi_polar_coordinate_table *cv) 
   }
 }
 
-cvpi_pixel* cvpi_yuva2rgba(cvpi_pixel* data, unsigned long width, unsigned long height) {
+void cvpi_avuy2argb(cvpi_pixel* yuva, cvpi_pixel* rgba, unsigned long width, unsigned long height) {
   unsigned long i = 0;
   int32_t c,d,e, r_unusat, g_unusat, b_unusat;
-  for(; i < width * height; ++i) {
-    c = data[i].rgba[cvpi_pixel_y] - 16;
-    d = data[i].rgba[cvpi_pixel_u] - 128;
-    e = data[i].rgba[cvpi_pixel_v] - 128;
-    r_unusat = 298 * c + 409 * e + 128;
-    g_unusat = 298 * c - 100 * d - 208 * e + 128;
-    b_unusat = 298 * c + 516 * d + 128;
-
-    /* Use usat to do the right arithmetic shift and clipping. GCC
-       does not have the necessry intrinsics. */
-    asm("usat %[value], #8, %[value], ASR #8":[value] "+r"(r_unusat));
-    asm("usat %[value], #8, %[value], ASR #8":[value] "+r"(g_unusat));
-    asm("usat %[value], #8, %[value], ASR #8":[value] "+r"(b_unusat));
-    data[i].rgba[cvpi_pixel_red] = r_unusat;
-    data[i].rgba[cvpi_pixel_green] = g_unusat;
-    data[i].rgba[cvpi_pixel_blue] = b_unusat;
+  if(yuva == rgba) {
+    for(; i < width * height; ++i) {
+      c = yuva[i].channel[cvpi_pixel_y] - 16;
+      d = yuva[i].channel[cvpi_pixel_u] - 128;
+      e = yuva[i].channel[cvpi_pixel_v] - 128;
+      r_unusat = 298 * c + 409 * e + 128;
+      g_unusat = 298 * c - 100 * d - 208 * e + 128;
+      b_unusat = 298 * c + 516 * d + 128;
+      
+      /* Use usat to do the right arithmetic shift and clipping. GCC
+	 does not have the necessry intrinsics. */
+      asm("usat %[value], #8, %[value], ASR #8":[value] "+r"(r_unusat));
+      asm("usat %[value], #8, %[value], ASR #8":[value] "+r"(g_unusat));
+      asm("usat %[value], #8, %[value], ASR #8":[value] "+r"(b_unusat));
+      rgba[i].channel[cvpi_pixel_red] = r_unusat;
+      rgba[i].channel[cvpi_pixel_green] = g_unusat;
+      rgba[i].channel[cvpi_pixel_blue] = b_unusat;
+    }
+  } else {
+    for(; i < width * height; ++i) {
+      c = yuva[i].channel[cvpi_pixel_y] - 16;
+      d = yuva[i].channel[cvpi_pixel_u] - 128;
+      e = yuva[i].channel[cvpi_pixel_v] - 128;
+      r_unusat = 298 * c + 409 * e + 128;
+      g_unusat = 298 * c - 100 * d - 208 * e + 128;
+      b_unusat = 298 * c + 516 * d + 128;
+      
+      /* Use usat to do the right arithmetic shift and clipping. GCC
+	 does not have the necessry intrinsics. */
+      asm("usat %[value], #8, %[value], ASR #8":[value] "+r"(r_unusat));
+      asm("usat %[value], #8, %[value], ASR #8":[value] "+r"(g_unusat));
+      asm("usat %[value], #8, %[value], ASR #8":[value] "+r"(b_unusat));
+      rgba[i].channel[cvpi_pixel_red] = r_unusat;
+      rgba[i].channel[cvpi_pixel_green] = g_unusat;
+      rgba[i].channel[cvpi_pixel_blue] = b_unusat;
+      rgba[i].channel[cvpi_pixel_alpha] = yuva[i].channel[cvpi_pixel_alpha];
+    }
   }
-
-  return data;  
 }
 
-cvpi_pixel* cvpi_image_rgba(VGImage image) {
+cvpi_pixel* cvpi_image_rgba(const VGImage image) {
   VGint width = vgGetParameteri(image, VG_IMAGE_WIDTH);
   VGint height = vgGetParameteri(image, VG_IMAGE_HEIGHT);
 
   VGint stride = CVPI_PIXEL_BYTES * width;
   cvpi_pixel* data = malloc(sizeof(*data) * width * height);
+#ifdef CVPI_ERROR_CHECK
+  if(data == NULL) {
+    fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
+    return NULL;
+  }
+#endif
   vgGetImageSubData(image, (void*)data, stride, CVPI_COLOR_SPACE, 0, 0, width, height);
   vgFinish();
-
-  return(cvpi_yuva2rgba(data, width, height));
+  cvpi_avuy2argb(data, data, width, height);
+  return data;
 }
