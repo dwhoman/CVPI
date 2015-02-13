@@ -108,7 +108,7 @@ VGImage vgCreateImagePainted(VGImageFormat fmt,
 #ifdef CVPI_ERROR_CHECK
   error = vgGetError();
   if(error != VG_NO_ERROR) {
-    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
     return VG_INVALID_HANDLE;
   }
 #endif
@@ -116,7 +116,7 @@ VGImage vgCreateImagePainted(VGImageFormat fmt,
 #ifdef CVPI_ERROR_CHECK
   error = vgGetError();
   if(error != VG_NO_ERROR) {
-    fprintf(cvpi_log_file, "%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
     vgDestroyImage(image0);
     vgFlush();
     return VG_INVALID_HANDLE;
@@ -178,7 +178,7 @@ VGint vgPixelBits(VGImageFormat format) {
     return 1;
   default:
     /* VG_UNSUPPORTED_IMAGE_FORMAT_ERROR */
-    fprintf(cvpi_log_file, "%s: Unsupported image format.\n", __func__);
+    cvpi_log_1("%s: Unsupported image format.\n", __func__);
     return 0;
   }
 }

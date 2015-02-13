@@ -11,6 +11,10 @@
 /* uint32_t, uint16_t, int32_t */
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum cvpi_bmp_pixel_format {
   cvpi_bmp_sRGB_565,
   cvpi_bmp_sBGR_565,
@@ -48,8 +52,9 @@ void cvpi_pbm_header_write(FILE*, unsigned long width, unsigned long height);
    HEIGHT, and output to FILE. */
 void cvpi_pgm_header_write(FILE*, unsigned long width, unsigned long height, unsigned char bits);
 
-/* portable pixmap format (PPM) */
-/* OpenVG does not have a 24 bit format */
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #else
 #pragma message __FILE__ ": CVPI_IMAGE_HEADERS already defined."

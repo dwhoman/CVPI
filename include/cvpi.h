@@ -1,6 +1,10 @@
 #ifndef CVPI
 #define CVPI 1
 
+#ifndef CVPI_BASE
+#include "cvpi_base.h"
+#endif
+
 #ifndef CVPI_IMAGE_FUNCTIONS
 #include "cvpi_image_functions.h"
 #endif
@@ -17,8 +21,8 @@
 #include "cvpi_image_headers.h"
 #endif
 
-#ifndef CVPI_CAMERA_SETUP
-#include "cvpi_camera_setup.h"
+#if HAVE_CONFIG_H
+# include "config.h"
 #endif
 
 #else

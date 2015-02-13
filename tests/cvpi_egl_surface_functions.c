@@ -1,5 +1,5 @@
 #ifndef __egl_h_
-#include <EGL/egl.h>
+#include <egl.h>
 #endif
 
 #ifndef __eglext_h_
@@ -7,7 +7,7 @@
 #endif
 
 #ifndef __eglplatform_h_
-#include <EGL/eglplatform.h>
+#include <eglplatform.h>
 #endif
 
 #ifndef BCM_HOST_H

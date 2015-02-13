@@ -320,11 +320,11 @@ void cvpi_bmp_header_write(FILE *write_ptr,
   int flushed = fflush(write_ptr);
   if(written != sizeof(bmph) || flushed != 0) {
     if(written != sizeof(bmph)) {
-      fprintf(cvpi_log_file, "%s: Error writing bmp header: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
-	      __func__, sizeof(bmph), written);
+      cvpi_log_4("%s:%d: Error writing bmp header: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+	       __func__, __LINE__, sizeof(bmph), written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
-	      __func__, errno, flushed);
+      cvpi_log_4("%s:%d: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
+	       __func__, __LINE__, errno, flushed);
     }
   }
 }
@@ -335,11 +335,11 @@ void cvpi_pbm_header_write(FILE *write_ptr, unsigned long width, unsigned long h
   int flushed = fflush(write_ptr);
   if(written < 0 || flushed != 0) {
     if(written < 0) {
-      fprintf(cvpi_log_file, "%s: Error writing bmp header: fprintf returned:%d.\n",
-	      __func__, written);
+      cvpi_log_3("%s:%d: Error writing bmp header: fprintf returned:%d.\n",
+		 __func__, __LINE__, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
-	      __func__, errno, flushed);
+      cvpi_log_4("%s:%d: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
+		 __func__, __LINE__, errno, flushed);
     }
   }
 }
@@ -350,11 +350,11 @@ void cvpi_pgm_header_write(FILE *write_ptr, unsigned long width, unsigned long h
   int flushed = fflush(write_ptr);
   if(written < 0 || flushed != 0) {
     if(written < 0) {
-      fprintf(cvpi_log_file, "%s: Error writing bmp header: fprintf returned:%d.\n",
-	      __func__, written);
+      cvpi_log_3("%s:%d: Error writing bmp header: fprintf returned:%d.\n",
+		 __func__, __LINE__, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
-	      __func__, errno, flushed);
+      cvpi_log_4("%s:%d: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
+		 __func__, __LINE__, errno, flushed);
     }
   }
 }

@@ -1,5 +1,5 @@
 #ifndef CVPI_VG_EXT
-#define CVPI_VG_EXT
+#define CVPI_VG_EXT 1
 
 #ifndef _OPENVG_H
 #include <VG/openvg.h>
@@ -7,6 +7,10 @@
 
 #ifndef CVPI_BASE
 #include "cvpi_base.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 char* cvpi_vg_error_string(VGErrorCode error);
@@ -47,6 +51,11 @@ VGImage vgCreateImagePainted(VGImageFormat fmt,
 VGint vgPixelBits(VGImageFormat format);
 
 /* VGPixel vgPixelFormatColorBitOffsets(VGImageFormat format); */
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
 #else
 #pragma message __FILE__ ": CVPI_VG_EXT already defined."
 #endif

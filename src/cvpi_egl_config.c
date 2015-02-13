@@ -1,5 +1,5 @@
 #ifndef __egl_h_
-#include <EGL/egl.h>
+#include <egl.h>
 /* functions */
 /* eglGetDisplay */
 
@@ -8,7 +8,7 @@
 #endif
 
 #ifndef __eglplatform_h_
-#include <EGL/eglplatform.h>
+#include <eglplatform.h>
 #endif
 
 #ifndef EGLEXT_BRCM_H

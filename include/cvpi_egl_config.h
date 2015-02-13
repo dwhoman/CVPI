@@ -12,7 +12,7 @@
 #define CVPI_EGL_CONFIG 1
 
 #ifndef __egl_h_
-#include <EGL/egl.h>
+#include <egl.h>
 /* EGL_OPENGL_BIT, etc. */
 #endif
 
@@ -29,6 +29,10 @@
 
 #ifndef CVPI_BASE
 #include "cvpi_base.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /* max width and height are defined in egl_client_config.h in the
@@ -453,6 +457,11 @@ CVPI_BOOL cvpi_egl_settings_transparent_blue_value(cvpi_egl_settings, EGLint blu
 char* cvpi_egl_error_string(EGLint);
 
 EGLint cvpi_egl_bytes_per_pixel(enum cvpi_egl_pixel_format);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
+
 #else
 #pragma message __FILE__ ": CVPI_EGL_CONFIG already defined."
 #endif

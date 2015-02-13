@@ -1020,7 +1020,7 @@ CVPI_BOOL test_cvpi_add_channels_color(void) {
     vgFlush();
     return CVPI_FALSE;
   }
-  VGImage correct_image = vgCreateImage(CVPI_COLOR_SPACE, width, height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  VGImage image_correct = vgCreateImage(CVPI_COLOR_SPACE, width, height,VG_IMAGE_QUALITY_NONANTIALIASED);
   vgFinish();
   error = vgGetError();
   if(error != VG_NO_ERROR) {
@@ -1031,7 +1031,7 @@ CVPI_BOOL test_cvpi_add_channels_color(void) {
     return CVPI_FALSE;
   }
   vgColorMatrixNormal(input_image, dummy, image_color);
-  vgColorMatrixNormal(correct_image, dummy, image_correct_color);
+  vgColorMatrixNormal(image_correct, dummy, image_correct_color);
 
   /* all channels should contain 1's */
   VGImage first_image = cvpi_add_channels_color(input_image, 3, 2, 1, 1, VG_RED|VG_BLUE|VG_GREEN|VG_ALPHA);
@@ -1091,13 +1091,13 @@ CVPI_BOOL test_cvpi_add_channels_color(void) {
     return CVPI_FALSE;
   }
   vgGetImageSubData(second_image, added_data, CVPI_PIXEL_BYTES*width, CVPI_COLOR_SPACE, 0, 0, width, height);
-  vgGetImageSubData(correct_image, correct_data, CVPI_PIXEL_BYTES*width, CVPI_COLOR_SPACE, 0, 0, width, height); 
+  vgGetImageSubData(image_correct, correct_data, CVPI_PIXEL_BYTES*width, CVPI_COLOR_SPACE, 0, 0, width, height); 
 
   vgFinish();
 
   vgDestroyImage(dummy);
   vgDestroyImage(input_image);
-  vgDestroyImage(correct_image);
+  vgDestroyImage(image_correct);
   vgDestroyImage(first_image);
   vgDestroyImage(second_image);
 
@@ -1197,7 +1197,7 @@ CVPI_BOOL test_cvpi_add_channels_all(void) {
     vgFlush();
     return CVPI_FALSE;
   }
-  VGImage correct_image = vgCreateImage(CVPI_COLOR_SPACE, width, height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  VGImage image_correct = vgCreateImage(CVPI_COLOR_SPACE, width, height,VG_IMAGE_QUALITY_NONANTIALIASED);
   vgFinish();
   error = vgGetError();
   if(error != VG_NO_ERROR) {
@@ -1209,7 +1209,7 @@ CVPI_BOOL test_cvpi_add_channels_all(void) {
   }
 
   vgColorMatrixNormal(input_image, dummy, image_color);
-  vgColorMatrixNormal(correct_image, dummy, image_correct_color);
+  vgColorMatrixNormal(image_correct, dummy, image_correct_color);
 
   /* all channels should contain 1's */
   VGImage first_image = cvpi_add_channels_all(input_image, 3, 2, 1, 1, 1, VG_RED|VG_BLUE|VG_GREEN|VG_ALPHA);
@@ -1272,13 +1272,13 @@ CVPI_BOOL test_cvpi_add_channels_all(void) {
   }
 
   vgGetImageSubData(second_image, added_data, CVPI_PIXEL_BYTES*width, CVPI_COLOR_SPACE, 0, 0, width, height);
-  vgGetImageSubData(correct_image, correct_data, CVPI_PIXEL_BYTES*width, CVPI_COLOR_SPACE, 0, 0, width, height); 
+  vgGetImageSubData(image_correct, correct_data, CVPI_PIXEL_BYTES*width, CVPI_COLOR_SPACE, 0, 0, width, height); 
 
   vgFinish();
 
   vgDestroyImage(dummy);
   vgDestroyImage(input_image);
-  vgDestroyImage(correct_image);
+  vgDestroyImage(image_correct);
   vgDestroyImage(first_image);
   vgDestroyImage(second_image);
 
@@ -1399,7 +1399,7 @@ CVPI_BOOL test_cvpi_combine_channelwise(void) {
     vgFlush();
     return CVPI_FALSE;
   }
-  VGImage correct_image = vgCreateImage(CVPI_COLOR_SPACE, width, height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  VGImage image_correct = vgCreateImage(CVPI_COLOR_SPACE, width, height,VG_IMAGE_QUALITY_NONANTIALIASED);
   vgFinish();
   error = vgGetError();
   if(error != VG_NO_ERROR) {
@@ -1413,16 +1413,16 @@ CVPI_BOOL test_cvpi_combine_channelwise(void) {
 
   vgColorMatrixNormal(image1, dummy, image1_color);
   vgColorMatrixNormal(image2, dummy, image2_color);
-  vgColorMatrixNormal(correct_image, dummy, image_correct_color);
+  vgColorMatrixNormal(image_correct, dummy, image_correct_color);
 
   VGImage output_image = cvpi_combine_channelwise(image1, image2, VG_RED|VG_GREEN);
   vgFinish();
-  if(first_image == VG_INVALID_HANDLE) {
+  if(output_image == VG_INVALID_HANDLE) {
     fprintf(cvpi_log_file, "%s:%d:Unable to combine channels\n", __func__, __LINE__);
     vgDestroyImage(dummy);
     vgDestroyImage(image1);
     vgDestroyImage(image2);
-    vgDestroyImage(correct_image);
+    vgDestroyImage(image_correct);
     vgFlush();
     return CVPI_FALSE;
   }
@@ -1433,7 +1433,7 @@ CVPI_BOOL test_cvpi_combine_channelwise(void) {
     vgDestroyImage(dummy);
     vgDestroyImage(image1);
     vgDestroyImage(image2);
-    vgDestroyImage(correct_image);
+    vgDestroyImage(image_correct);
     vgDestroyImage(output_image);
     vgFlush();
     return CVPI_FALSE;
@@ -1444,7 +1444,7 @@ CVPI_BOOL test_cvpi_combine_channelwise(void) {
     vgDestroyImage(dummy);
     vgDestroyImage(image1);
     vgDestroyImage(image2);
-    vgDestroyImage(correct_image);
+    vgDestroyImage(image_correct);
     vgDestroyImage(output_image);
     vgFlush();
     return CVPI_FALSE;
@@ -1455,7 +1455,7 @@ CVPI_BOOL test_cvpi_combine_channelwise(void) {
     vgDestroyImage(dummy);
     vgDestroyImage(image1);
     vgDestroyImage(image2);
-    vgDestroyImage(correct_image);
+    vgDestroyImage(image_correct);
     vgDestroyImage(output_image);
     vgFlush();
     free(added_data);
@@ -1463,12 +1463,12 @@ CVPI_BOOL test_cvpi_combine_channelwise(void) {
   }
 
   vgGetImageSubData(output_image, added_data, CVPI_PIXEL_BYTES*width, CVPI_COLOR_SPACE, 0, 0, width, height);
-  vgGetImageSubData(correct_image, correct_data, CVPI_PIXEL_BYTES*width, CVPI_COLOR_SPACE, 0, 0, width, height); 
+  vgGetImageSubData(image_correct, correct_data, CVPI_PIXEL_BYTES*width, CVPI_COLOR_SPACE, 0, 0, width, height); 
 
   vgFinish();
 
   vgDestroyImage(dummy);
-  vgDestroyImage(correct_image);
+  vgDestroyImage(image_correct);
   vgDestroyImage(image1);
   vgDestroyImage(image2);
   vgDestroyImage(output_image);
@@ -1535,7 +1535,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
 						    int width, int height, 
 						    VGImageChannel channel, VGubyte bound1, VGubyte bound2, 
 						    VGubyte fill, CVPI_BOOL invert) {
-  size_t path_size = sizeof(*input_path) * (strlen(IMAGES_CORRECT_DIR) + strlen(input_file_name));
+  size_t path_size = sizeof(*input_file_name) * (strlen(IMAGES_CORRECT_DIR) + strlen(input_file_name));
   if(path_size <= 0) {
     fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return CVPI_FALSE;
@@ -1586,7 +1586,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
     return CVPI_FALSE;
   }
 
-  size_t output_path_size = sizeof(*output_path) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
+  size_t output_path_size = sizeof(*output_file_name) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
   if(output_path_size <= 0) {
     fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     free(input_data);
@@ -1603,7 +1603,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
     return CVPI_FALSE;
   }
 
-  int file_path_print = sprintf(output_path, "%s%s", IMAGES_TMP_DIR, output_file_name);
+  file_path_print = sprintf(output_path, "%s%s", IMAGES_TMP_DIR, output_file_name);
   if(file_path_print < 0) {
     fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
     free(output_path);
@@ -1678,11 +1678,11 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
 
   //cvpi_pbm_header_write(output_file, width, height);
   size_t written = fwrite(thresholded_data, output_size, 1, output_file);
-  int flushded = fflush(output_file);
-  if(written != fwrite_size || flushed != 0) {
-    if(written != fwrite_size) {
+  int flushed = fflush(output_file);
+  if(written != output_size || flushed != 0) {
+    if(written != output_size) {
       fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
-	      __func__, fwrite_size, written);
+	      __func__, output_size, written);
     } else {
       fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
@@ -1733,7 +1733,7 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name, c
 						  const VGubyte* bound1, const VGubyte* bound2, 
 						  const VGubyte* fill, const CVPI_BOOL* invert, 
 						  const CVPI_BOOL dependent) {
-  size_t input_path_size = sizeof(*input_path) * (strlen(IMAGES_CORRECT_DIR) + strlen(input_file_name));
+  size_t input_path_size = sizeof(*input_file_name) * (strlen(IMAGES_CORRECT_DIR) + strlen(input_file_name));
   if(input_path_size <= 0) {
     fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return CVPI_FALSE;
@@ -1781,7 +1781,7 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name, c
     fclose(input_file);
     return CVPI_FALSE;
   }
-  size_t output_path_size = sizeof(*output_path) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
+  size_t output_path_size = sizeof(*output_file_name) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
   if(output_path_size <= 0) {
     fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     free(input_path);
@@ -2082,7 +2082,7 @@ static CVPI_BOOL test_cvpi_image_channel_mask_common(char* output_file_name,
   vgGetImageSubData(output_image, image_data, 2*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, 2, 1);
   vgFinish(); 
 
-  size_t output_path_length = sizeof(*output_path) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
+  size_t output_path_length = sizeof(*output_file_name) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
   char* output_path = malloc(output_path_length);
   if(output_path == NULL) {
     PRINT_MALLOC_ERROR;
@@ -2106,7 +2106,8 @@ static CVPI_BOOL test_cvpi_image_channel_mask_common(char* output_file_name,
     free(output_path);
     return CVPI_FALSE;
   }
-  size_t written = fwrite(image_data, 2*CVPI_PIXEL_BYTES, 1, output_file);
+  int fwrite_size = 2*CVPI_PIXEL_BYTES;
+  size_t written = fwrite(image_data, fwrite_size, 1, output_file);
   int flushed = fflush(output_file);
   if(written != fwrite_size || flushed != 0) {
     if(written != fwrite_size) {

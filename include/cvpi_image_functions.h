@@ -1,17 +1,21 @@
+#ifndef CVPI_IMAGE_FUNCTIONS
+#define CVPI_IMAGE_FUNCTIONS 1
+
 #ifndef _STDINT_H
 #include <stdint.h>
 #endif
 
 #ifndef _OPENVG_H
-#include <VG/openvg.h>
+#include <openvg.h>
 #endif
 
 #ifndef CVPI_BASE
 #include "cvpi_base.h"
 #endif
 
-#ifndef CVPI_IMAGE_FUNCTIONS
-#define CVPI_IMAGE_FUNCTIONS 1
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* the color space assumed for all functions */
 #define CVPI_COLOR_SPACE VG_sARGB_8888
@@ -341,6 +345,10 @@ void cvpi_image_polar_coordinate_table_destroy(cvpi_polar_coordinate_table *ct);
    output into a bitmap image.*/
 void cvpi_avuy2argb(cvpi_pixel* yuva, cvpi_pixel* rgba, unsigned long width, unsigned long height);
 cvpi_pixel* cvpi_image_rgba(const VGImage image);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #else
 #pragma message __FILE__ ": CVPI_IMAGE_FUNCTIONS already defined."
