@@ -1,3 +1,4 @@
-SUBDIRS = include src tests bindings examples
+SUBDIRS = src include 
+#bindings tests
 EXTRA_DIST = COPYING.LIB
-# chicken bindings
+ACLOCAL_AMFLAGS = -I m4

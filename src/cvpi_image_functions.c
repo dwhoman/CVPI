@@ -7,7 +7,7 @@
 #endif
 
 #ifndef _OPENVG_H
-#include <openvg.h>
+#include <VG/openvg.h>
 #endif
 
 #ifndef _STDIO_H
@@ -20,6 +20,10 @@
 
 #ifndef _UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifndef _ERRNO_H
+#include <errno.h>
 #endif
 
 #ifndef	_MATH_H

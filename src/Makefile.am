@@ -1,34 +1,17 @@
 #ACLOCAL_AMFLAGS = -I include $(CVPI_RASPBERRY_FLAGS)
 
-include_HEADERS = \
-	$(top_srcdir)/include/cvpi.h \
-	$(top_srcdir)/include/cvpi_base.h \
-	$(top_srcdir)/include/cvpi_egl_config.h \
-	$(top_srcdir)/include/cvpi_image_functions.h \
-	$(top_srcdir)/include/cvpi_image_headers.h \
-	$(top_srcdir)/include/cvpi_vg_ext.h
+lib_LTLIBRARIES = libcvpi.la
 
-noinst_LIBRARIES = libcvpi.a
-
-#libcvpi_a_CPPFLAGS = -I include $(CVPI_RASPBERRY_CPPFLAGS)
-#libcvpi_a_LDFLAGS = $(CVPI_RASPBERRY_LDFLAGS)
-
-AM_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include/ $(CVPI_RASPBERRY_CPPFLAGS)
-AM_LDFLAGS = $(CVPI_RASPBERRY_LDFLAGS)
-
-libcvpi_a_SOURCES = \
+libcvpi_la_SOURCES = \
 	cvpi_base.c \
 	cvpi_egl_config.c \
 	cvpi_image_functions.c \
 	cvpi_image_headers.c \
-	cvpi_vg_ext.c \
-	$(top_srcdir)/include/cvpi.h \
-	$(top_srcdir)/include/cvpi_base.h \
-	$(top_srcdir)/include/cvpi_egl_config.h \
-	$(top_srcdir)/include/cvpi_image_functions.h \
-	$(top_srcdir)/include/cvpi_image_headers.h \
-	$(top_srcdir)/include/cvpi_vg_ext.h
+	cvpi_vg_ext.c
+
+libcvpi_la_CPPFLAGS = -I$(top_srcdir) -I$(top_srcdir)/include/ $(CVPI_RASPBERRY_CPPFLAGS)
+libcvpi_la_LDFLAGS = $(CVPI_RASPBERRY_LDFLAGS)
 
 # LDADD = libcvpi.a
 
-libcvpi_a_LIBADD = $(LIBOBJS) $(ALLOCA)
+# libcvpi_la_LIBADD = ../libcvpi.la

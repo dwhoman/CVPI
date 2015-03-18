@@ -10,6 +10,10 @@
 #include "cvpi_egl_surface_functions.h"
 #endif
 
+#ifndef _STDLIB_H
+#include <stdlib.h>
+#endif
+
 CVPI_BOOL test_cvpi_egl_settings_create(void) {
   cvpi_egl_settings settings = cvpi_egl_settings_create();
   int check = cvpi_egl_settings_check(settings);
@@ -46,16 +50,18 @@ CVPI_BOOL test_cvpi_egl_instance_openvg_pixmap(void) {
     CVPI_TRUE_TEST(cvpi_egl_settings_conformant(settings, cvpi_egl_conformant_bit_openvg, cvpi_egl_settings_add));
   good &=
     CVPI_TRUE_TEST(cvpi_egl_settings_renderable_type(settings, cvpi_egl_renderable_bits_openvg, cvpi_egl_settings_add));
-
+#if HAVE_BCM_HOST == 1
   good &=
     CVPI_TRUE_TEST(cvpi_egl_settings_pixel_format_brcm(settings, cvpi_egl_pixel_format_vg_image_brcm, cvpi_egl_settings_add));
-
+#endif
+#if HAVE_BCM_HOST == 1
   good &=
     CVPI_TRUE_TEST(cvpi_egl_settings_pixel_format_brcm(settings,cvpi_egl_pixel_format_render_vg_brcm, cvpi_egl_settings_add));
-
+#endif
+#if HAVE_BCM_HOST == 1
   good &=
     CVPI_TRUE_TEST(cvpi_egl_settings_pixel_format_brcm(settings,cvpi_egl_pixel_format_usage_mask_brcm, cvpi_egl_settings_add));
-
+#endif
   good &=
     CVPI_TRUE_TEST(cvpi_egl_settings_buffer_size(settings, 32));
 

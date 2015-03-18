@@ -67,6 +67,9 @@ typedef struct {
 
 static void print_threaded(void* data_) {
   log_data* data = (log_data*)data_;
+
+  int status = pthread_detach(pthread_self());
+
   switch(data->type) {
   case 1:
     fprintf(cvpi_log_file, data->format, data->func, data->line);
@@ -120,6 +123,11 @@ static void print_threaded(void* data_) {
   }
 
   free(data);
+
+  if(status != 0) {
+    fprintf(stderr, "print_threaded failed to detach with status = %d\n", status);
+    abort();
+  }
 }
 
 void cvpi_log_print_threaded(const int type, const int format_size, 

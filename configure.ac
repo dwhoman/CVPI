@@ -1,23 +1,27 @@
 AC_PREREQ([2.61])
 AC_INIT([cvpi],[1.0])
+AC_CANONICAL_HOST
+
 dnl subdir-objects: for non-recursive make
-dnl subdir-objects
-AM_INIT_AUTOMAKE([-Wall -Werror])
+AM_INIT_AUTOMAKE([-Wall subdir-objects])
+AM_PROG_AR
 
 AC_LANG([C])
+
+LT_PREREQ([2.2])
+LT_INIT
+
+AC_PROG_CC([gcc cl cc])
+dnl AC_PROG_LIBTOOL
+AM_PROG_CC_C_O
+
+AC_PROG_INSTALL
+
+dnl AC_PROG_RANLIB
+
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([src/cvpi_base.c])
 AC_CONFIG_HEADERS([config.h])
-
-dnl LT_PREREQ([2.2])
-dnl LT_INIT
-
-AC_PROG_CC([gcc cl cc])
-AC_PROG_INSTALL
-
-AM_PROG_CC_C_O
-
-AC_PROG_RANLIB
 
 dnl c99 features: restrict, variadic macros, inline, compound literals
 AC_PROG_CC_C99
@@ -28,30 +32,41 @@ fi
 dnl assuming that the program will not be ran on mixed-endian
 AC_C_BIGENDIAN(AC_MSG_WARN([CVPI has not been tested on big endian.]),,AC_MSG_WARN([Unknown endianness.]))
 
-
+dnl Make sure the pkg-config macros are defined
+m4_ifndef([PKG_PROG_PKG_CONFIG],
+    [m4_fatal([Could not locate the pkg-config autoconf macros.
+  These are usually located in /usr/share/aclocal/pkg.m4. If your macros
+  are in a different location, try setting the environment variable
+  ACLOCAL="aclocal -I/other/macro/dir" before running autoreconf.])])
+PKG_PROG_PKG_CONFIG()
 
 
 dnl CVPI_RASPBERRY_CPPFLAGS="-I /opt/vc/include/ -I /opt/vc/include/EGL/ -I /opt/vc/include/interface/vmcs_host/linux/ -I /opt/vc/include/interface/vcos/pthreads/"
 dnl CVPI_RASPBERRY_LDFLAGS="-L /opt/vc/lib"
 dnl AC_SUBST(CVPI_RASPBERRY_CPPFLAGS)
 dnl AC_SUBST(CVPI_RASPBERRY_LDFLAGS)
-dnl AC_CHECK_HEADER([bcm_host.h])
-dnl AC_CHECK_HEADER([eglext_brcm.h])
 
 CVPI_RASPBERRY_CPPFLAGS=""
 CVPI_RASPBERRY_LDFLAGS=""
 
+AC_DEFINE([HAVE_BCM_HOST],[0],[Defining HAVE_BCM_HOST = 0])
+
 if test -d /opt/vc/lib && test -d /opt/vc/include/ && test -d /opt/vc/include/EGL/ && test -d /opt/vc/include/interface/vmcs_host/linux/ && test -d /opt/vc/include/interface/vcos/pthreads/ && test -d /opt/vc/include/VG/
 then
-CVPI_RASPBERRY_CPPFLAGS="-I /opt/vc/include/ -I /opt/vc/include/EGL/ -I /opt/vc/include/interface/vmcs_host/linux/ -I /opt/vc/include/interface/vcos/pthreads/ -I /opt/vc/include/VG/"
+CVPI_RASPBERRY_CPPFLAGS="-I /opt/vc/include/ -I /opt/vc/include/interface/vmcs_host/linux/ -I /opt/vc/include/interface/vcos/pthreads/"
 CVPI_RASPBERRY_LDFLAGS="-L /opt/vc/lib"
 
-AC_CHECK_HEADER([bcm_host.h])
-AC_CHECK_HEADER([eglext_brcm.h])
+AC_CHECK_HEADERS(/opt/vc/include/bcm_host.h, [AC_DEFINE([HAVE_BCM_HOST],[1], [Defining HAVE_BCM_HOST = 1])], [AC_MSG_WARN([Unable to find bcm_host.h.])])
+AC_CHECK_HEADERS(/opt/vc/include/VG/openvg.h,[],[AC_MSG_WARN([Unable to find openvg.h.])])
+AC_CHECK_HEADERS(/opt/vc/include/EGL/eglext_brcm.h,[],[AC_MSG_WARN([Unable to find eglext_brcm.h.])])
+AC_CHECK_HEADERS(/opt/vc/include/EGL/egl.h,[],[AC_MSG_WARN([Unable to find egl.h.])])
+AC_CHECK_HEADERS(/opt/vc/include/EGL/eglplatform.h,[],[AC_MSG_WARN([Unable to find eglplatform.h.])])
 
 echo "Creating Raspberry Pi Paths.\n"
 else
 echo "Not Creating Raspberry Pi Paths.\n"
+PKG_CHECK_MODULES(EGL, [egl])
+PKG_CHECK_MODULES(VG, [vg])
 fi
 
 AC_SUBST(CVPI_RASPBERRY_CPPFLAGS)
@@ -69,10 +84,10 @@ dnl AC_CHECK_HEADER([eglplatform.h],,
 dnl 	AC_MSG_ERROR([eglplatform.h not found.]))
 
 AC_CHECK_HEADERS([stdlib.h stdio.h errno.h math.h unistd.h stdarg.h])
-AC_CHECK_HEADER([openvg.h])
-AC_CHECK_HEADER([vgu.h])
-AC_CHECK_HEADER([egl.h])
-AC_CHECK_HEADER([eglplatform.h])
+dnl AC_CHECK_HEADER([openvg.h])
+dnl AC_CHECK_HEADER([vgu.h])
+dnl AC_CHECK_HEADER([egl.h])
+dnl AC_CHECK_HEADER([eglplatform.h])
 
 dnl logging type options
 AC_ARG_ENABLE([logging-sync],
@@ -164,10 +179,17 @@ dnl else
 dnl    AC_DEFINE([CVPI_DEBUG],[0], [CVPI OpenVG debugging support disabled])
 dnl fi
 
+AC_CHECK_PROG(CSC, csc, YES)
+AC_CHECK_PROG(CHICKEN, chicken, YES)
+
+CHICKENFLAGS="-debug-level 0"
+
 dnl there should only be one
 AC_CONFIG_FILES([Makefile
 		src/Makefile
-		tests/Makefile
+		include/Makefile
 		])
+dnl		bindings/Makefile
+dnl		tests/Makefile
 dnl		examples/Makefile
 AC_OUTPUT

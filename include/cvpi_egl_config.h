@@ -12,13 +12,15 @@
 #define CVPI_EGL_CONFIG 1
 
 #ifndef __egl_h_
-#include <egl.h>
+#include <EGL/egl.h>
 /* EGL_OPENGL_BIT, etc. */
 #endif
 
+#if HAVE_BCM_HOST == 1
 #ifndef EGLEXT_BRCM_H
-#include <eglext_brcm.h>
+#include <EGL/eglext_brcm.h>
 /* EGL_PIXEL_FORMAT_ARGB_8888_PRE_BRCM, etc. */
+#endif
 #endif
 
 /* This file does not exist on the system. */
@@ -50,7 +52,9 @@ extern "C" {
 /** \def CVPI_EGL_DEFAULT_PIXEL_FORMAT
     \brief CVPI uses ARGB 8888 format for reading and writing image data.
  */
+#if HAVE_BCM_HOST == 1
 #define CVPI_EGL_DEFAULT_PIXEL_FORMAT EGL_PIXEL_FORMAT_ARGB_8888_BRCM
+#endif
 
 /* Many of the EGL settings have a fixed number of possibilities. The
    Broadcom implementation uses #define statements for most of these
@@ -64,6 +68,7 @@ extern "C" {
     default, cvpi_egl_ARGB_8888, is recommended because some CVPI functions
     work only with that pixel format. 
  */
+#if HAVE_BCM_HOST == 1
 enum cvpi_egl_pixel_format {
   cvpi_egl_ARGB_8888_PRE = EGL_PIXEL_FORMAT_ARGB_8888_PRE_BRCM,
   cvpi_egl_ARGB_8888     = EGL_PIXEL_FORMAT_ARGB_8888_BRCM,
@@ -71,11 +76,13 @@ enum cvpi_egl_pixel_format {
   cvpi_egl_RGB_565       = EGL_PIXEL_FORMAT_RGB_565_BRCM,
   cvpi_egl_A_8           = EGL_PIXEL_FORMAT_A_8_BRCM
 };
+#endif
 
 /** 
     Additional, undocumented settings that appear necessary to pass to
     eglCreateGlobalImageBRCM as part of its third argument.
 */
+#if HAVE_BCM_HOST == 1
 enum cvpi_egl_pixel_format_brcm {
   cvpi_egl_pixel_format_gles2_texture_brcm = EGL_PIXEL_FORMAT_GLES2_TEXTURE_BRCM,
   cvpi_egl_pixel_format_gles_texture_brcm = EGL_PIXEL_FORMAT_GLES_TEXTURE_BRCM,
@@ -89,6 +96,7 @@ enum cvpi_egl_pixel_format_brcm {
   cvpi_egl_pixel_format_vg_image_brcm     = EGL_PIXEL_FORMAT_VG_IMAGE_BRCM,
   cvpi_egl_pixel_format_brcm_none = 0
 };
+#endif
 
 /**  EGL_SURFACE_TYPE bitmask bits
  */
@@ -239,9 +247,13 @@ struct cvpi_egl_settings_s {
   enum cvpi_egl_renderable_api renderable_api;
   /* which surface will be rendered to */
   enum cvpi_egl_current_surface_type current_surface_type;
+#if HAVE_BCM_HOST == 1
   enum cvpi_egl_pixel_format pixel_format;
+#endif
+#if HAVE_BCM_HOST == 1
   EGLint pixel_format_brcm;	/* additional settings for
 				   eglCreateGlobalImageBRCM */
+#endif
   /* default: EGL_NO_CONTEXT, passed to eglCreateContext */
   EGLContext share_context;
 
@@ -392,10 +404,14 @@ CVPI_BOOL cvpi_egl_settings_width_check(unsigned long width);
 CVPI_BOOL cvpi_egl_settings_height(cvpi_egl_settings, unsigned long height);
 CVPI_BOOL cvpi_egl_settings_height_check(unsigned long width);
 
+#if HAVE_BCM_HOST == 1
 CVPI_BOOL cvpi_egl_settings_pixel_format_brcm_check(cvpi_egl_settings);
+#endif
+#if HAVE_BCM_HOST == 1
 CVPI_BOOL cvpi_egl_settings_pixel_format_brcm(cvpi_egl_settings, 
 					      enum cvpi_egl_pixel_format_brcm pixel_format_brcm,
 					      enum cvpi_egl_settings_change);
+#endif
 CVPI_BOOL cvpi_egl_surface_functions_check(cvpi_egl_settings);
 CVPI_BOOL cvpi_egl_settings_buffer_size_check(EGLint buffer_size);
 CVPI_BOOL cvpi_egl_settings_buffer_size(cvpi_egl_settings, EGLint buffer_size);
@@ -456,7 +472,9 @@ CVPI_BOOL cvpi_egl_settings_transparent_blue_value(cvpi_egl_settings, EGLint blu
    return a string describing it. */
 char* cvpi_egl_error_string(EGLint);
 
+#if HAVE_BCM_HOST == 1
 EGLint cvpi_egl_bytes_per_pixel(enum cvpi_egl_pixel_format);
+#endif
 
 #ifdef __cplusplus
 } /* extern "C" */

@@ -1,26 +1,30 @@
 #ifndef __egl_h_
-#include <egl.h>
+#include <EGL/egl.h>
 #endif
 
 #ifndef __eglext_h_
-#include <eglext.h>
+#include <EGL/eglext.h>
 #endif
 
 #ifndef __eglplatform_h_
-#include <eglplatform.h>
+#include <EGL/eglplatform.h>
 #endif
 
+#if HAVE_BCM_HOST == 1
 #ifndef BCM_HOST_H
 #include <bcm_host.h>
+#endif
 #endif
 
 #ifndef EGL_EGLEXT_PROTOTYPES
 #pragma message __FILE__ ": EGL_EGLEXT_PROTOTYPES must be defined for eglCreateGlobalImageBRCM prototype to be defined."
 #endif
 
+#if HAVE_BCM_HOST == 1
 #ifndef EGLEXT_BRCM_H
-#include <eglext_brcm.h>
+#include <EGL/eglext_brcm.h>
 /* eglCreateGlobalImageBRCM */
+#endif
 #endif
 
 #ifndef CVPI
