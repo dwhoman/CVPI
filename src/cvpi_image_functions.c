@@ -309,12 +309,10 @@ VGImage cvpi_yuyv2yuva(const VGImage yuyv_image) {
   return output_image;
 }
 
-VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGshort b, VGfloat scale, VGfloat bias) {
+VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGshort b, VGfloat scale, unsigned char bias) {
 /* add_images adds two images by adding the upper halves and the lower
    halves separately.  Done this way so that the intermediate image
    does not exceed allowable dimensions. */
-
-  /* TODO: images of height 1024 or less can be added using a single image buffer */
   VGErrorCode error;
 
   VGint img1_width = vgGetParameteri(img1, VG_IMAGE_WIDTH);
