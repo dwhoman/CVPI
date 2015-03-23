@@ -121,124 +121,97 @@ const VGubyte cvpi_inversion_array[256] = {255,254,253,252,251,250,249,248,247,2
 
 /* kernel is rotated 90 degrees counter-clockwise from Math definition
    to array index VG spec p. 179 */
-const VGshort cvpi_filter_sobel_x[9] ={1,2,1,
-				       0,0,0,
-				       -1,-2,-1};
 const VGshort cvpi_filter_sobel_y[9] = {1,0,-1,
 					2,0,-2,
 					1,0,-1};
+const VGshort cvpi_filter_sobel_x[9] ={-1,-2,-1,
+				       0,0,0,
+				       1,2,1};
 
-const VGshort cvpi_filter_scharr_x[9] = {-3,-10,-3,
+const VGshort cvpi_filter_scharr_y[9] = {-3,0,3,
+					 -10,0,10,
+					 -3,0,3};
+const VGshort cvpi_filter_scharr_x[9] = {3,10,3,
 					 0,0,0,
-					 3,10,3};
-const VGshort cvpi_filter_scharr_y[9] = {3,0,-3,
-					 10,0,-10,
-					 3,0,-3};
+					 -3,-10,-3};
 
-const VGshort cvpi_filter_prewitt_x[9] = {1,1,1,
+const VGshort cvpi_filter_prewitt_y[9] = {1,0,-1,
+					  1,0,-1,
+					  1,0,-1};
+const VGshort cvpi_filter_prewitt_x[9] = {-1,-1,-1,
 					  0,0,0,
-					  -1,-1,-1};
+					  1,1,1};
 
-const VGshort cvpi_filter_prewitt_y[9] = {-1,0,1,
-					  -1,0,1,
-					  -1,0,1};
-
-const VGshort cvpi_filter_roberts_cross_x[4] = {0,-1,
-						1,0};
-const VGshort cvpi_filter_roberts_cross_y[4] = {1,0,
-						0,-1};
+const VGshort cvpi_filter_roberts_cross_x[4] = {0,1,
+						-1,0};
+const VGshort cvpi_filter_roberts_cross_y[4] = {-1,0,
+						0,1};
 
 #define cvpi_vg_error_check()\
   do {\
   VGErrorCode error = vgGetError();\
   if(error != VG_NO_ERROR) {\
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error)); \
+    BADSTATE = 1;
+    goto TAKEDOWN;							\
+  }\
+  } while(0)
+
+/* use inside TAKEDOWN */
+#define cvpi_vg_error_takedown()\
+  do {\
+  VGErrorCode error = vgGetError();\
+  if(error != VG_NO_ERROR) {\
+    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error)); \
+    BADSTATE = 1;
   }\
   } while(0)
 
 VGImage cvpi_yuyv2yuva(const VGImage yuyv_image) {
-
-  VGErrorCode error;
+#define TAKEDOWN cvpi_yuyv2yuva_takedown
+  int BADSTATE 0;
+  VGImage mod_image_1 = VG_INVALID_HANDLE;
+  VGImage mod_image_2 = VG_INVALID_HANDLE;
+  VGImage output_image = VG_INVALID_HANDLE; /* return value */
 
   VGint yuyv_width = vgGetParameteri(yuyv_image, VG_IMAGE_WIDTH);
 #if CVPI_CAREFUL == 1
-  error = vgGetError();
-  if(error != VG_NO_ERROR) {
-    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    return VG_INVALID_HANDLE;
-  }
+  cvpi_vg_error_check();
 #endif
   VGint height = vgGetParameteri(yuyv_image, VG_IMAGE_HEIGHT);
 #if CVPI_CAREFUL == 1
-  error = vgGetError();
-  if(error != VG_NO_ERROR) {
-    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    return VG_INVALID_HANDLE;
-  }
+  cvpi_vg_error_check();
 #endif
   const VGfloat yuyv2yuva_conversion_1[20] = {
   0, 0, 0, 1,
   0, 1, 0, 0,
   0, 0, 1, 0,
   1, 0, 0, 0,
-  0, 0, 0, 0
+
+  0, 0, 0, 1
   };
   const VGfloat yuyv2yuva_conversion_2[20] = {
-  0,0,1,0,
-  0,1,0,0,
-  0,0,0,1,
-  1,0,0,0,
+  0, 0, 1, 0,
+  0, 1, 0, 0,
+  0, 0, 0, 1,
+  1, 0, 0, 0,
 
-  0,0,0,0
+  0, 0, 0, 1
   };
 
   VGint yuva_width = yuyv_width*2;
 
-  unsigned long itter;
+  mod_image_1 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
+  cvpi_vg_error_check();
 
-  VGImage mod_image_1 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-  error = vgGetError();
-  if(error != VG_NO_ERROR) {
-    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    return VG_INVALID_HANDLE;
-  }
-  VGImage mod_image_2 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-  error = vgGetError();
-  if(error != VG_NO_ERROR) {
-    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(mod_image_1);
-    vgFlush();
-    return VG_INVALID_HANDLE;
-  }
-  VGImage mod_image_3 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-  error = vgGetError();
-  if(error != VG_NO_ERROR) {
-    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(mod_image_1);
-    vgDestroyImage(mod_image_2);
-    vgFlush();
-    return VG_INVALID_HANDLE;
-  }
+  mod_image_2 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
+  cvpi_vg_error_check();
 
-  VGImage mod_image_4 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-  error = vgGetError();
-  if(error != VG_NO_ERROR) {
-    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(mod_image_1);
-    vgDestroyImage(mod_image_2);
-    vgDestroyImage(mod_image_3);
-    vgFlush();
-    return VG_INVALID_HANDLE;
-  }
-  /* set red in RGBA to 255 */
-  vgLookup(mod_image_1, yuyv_image, cvpi_255_array, cvpi_identity_array, cvpi_identity_array, cvpi_identity_array, OUTPUT_LINEAR, VG_FALSE);
+  vgColorMatrix(mod_image_1, yuyv_image, yuyv2yuva_conversion_1);
 #if CVPI_CAREFUL == 1
-  /* Should never error, all pre-conditions are covered. Might internally run out of memory if not in place. */
   cvpi_vg_error_check();
 #endif
-
-  /* set blue in RGBA to 255 */
-  vgLookup(mod_image_2, yuyv_image, cvpi_identity_array, cvpi_identity_array, cvpi_255_array, cvpi_identity_array, OUTPUT_LINEAR, VG_FALSE);
+  vgColorMatrix(mod_image_2, yuyv_image, yuyv2yuva_conversion_2);
 #if CVPI_CAREFUL == 1
   cvpi_vg_error_check();
 #endif
@@ -247,44 +220,16 @@ VGImage cvpi_yuyv2yuva(const VGImage yuyv_image) {
   cvpi_vg_error_check();
 #endif
 
-  vgColorMatrix(mod_image_3, mod_image_1, yuyv2yuva_conversion_1);
-#if CVPI_CAREFUL == 1
+  output_image = vgCreateImage(CVPI_COLOR_SPACE, yuva_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
   cvpi_vg_error_check();
-#endif
-  vgColorMatrix(mod_image_4, mod_image_2, yuyv2yuva_conversion_2);
-#if CVPI_CAREFUL == 1
-  cvpi_vg_error_check();
-#endif
-  vgFinish();
-#if CVPI_CAREFUL == 1
-  cvpi_vg_error_check();
-#endif
-
-  /* images no longer needed */
-  vgDestroyImage(mod_image_1);
-#if CVPI_CAREFUL == 1
-  cvpi_vg_error_check();
-#endif
-  vgDestroyImage(mod_image_2);
-#if CVPI_CAREFUL == 1
-  cvpi_vg_error_check();
-#endif
-
-  VGImage output_image = vgCreateImage(CVPI_COLOR_SPACE, yuva_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
-  error = vgGetError();
-  if(error != VG_NO_ERROR) {
-    cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    output_image = VG_INVALID_HANDLE;
-    goto cvpi_yuyv2yuva_skip_loop;
-  }
 
   /* merge mod 3,4 images */
-  for(itter = 0; itter < yuyv_width; ++itter) {
-    vgCopyImage(output_image, itter*2, 0, mod_image_3, itter, 0, 1, height, VG_FALSE);
+  for(unsigned long itter = 0; itter < yuyv_width; ++itter) {
+    vgCopyImage(output_image, itter*2, 0, mod_image_1, itter, 0, 1, height, VG_FALSE);
 #if CVPI_CAREFUL == 1
     cvpi_vg_error_check();
 #endif
-    vgCopyImage(output_image, itter*2+1, 0, mod_image_4, itter, 0, 1, height, VG_FALSE);
+    vgCopyImage(output_image, itter*2+1, 0, mod_image_2, itter, 0, 1, height, VG_FALSE);
 #if CVPI_CAREFUL == 1
     cvpi_vg_error_check();
 #endif
@@ -293,28 +238,45 @@ VGImage cvpi_yuyv2yuva(const VGImage yuyv_image) {
     cvpi_vg_error_check();
 #endif
   }
- cvpi_yuyv2yuva_skip_loop:
-  vgDestroyImage(mod_image_3);
+ TAKEDOWN:
+  vgDestroyImageSafe(mod_image_1);
 #if CVPI_CAREFUL == 1
-  cvpi_vg_error_check();
+  cvpi_vg_error_takedown();
 #endif
-  vgDestroyImage(mod_image_4);
+  vgDestroyImageSafe(mod_image_2);
 #if CVPI_CAREFUL == 1
-  cvpi_vg_error_check();
+  cvpi_vg_error_takedown();
 #endif
+  if(BADSTATE) {
+    /* set output image to  */
+    vgDestroyImageSafe(output_image);
+#if CVPI_CAREFUL == 1
+    cvpi_vg_error_takedown();
+#endif
+  }
   vgFlush();
 #if CVPI_CAREFUL == 1
-  cvpi_vg_error_check();
+  cvpi_vg_error_takedown();
 #endif
   return output_image;
+#undef TAKEDOWN
 }
 
 VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGshort b, VGfloat scale, unsigned char bias) {
 /* add_images adds two images by adding the upper halves and the lower
    halves separately.  Done this way so that the intermediate image
    does not exceed allowable dimensions. */
-  VGErrorCode error;
+#define TAKEDOWN cvpi_add_images_takedown
+  int BADSTATE 0;
 
+  VGImage output = VG_INVALID_HANDLE;
+  VGImage half = VG_INVALID_HANDLE;			/* image half original */
+  VGImage half_c = VG_INVALID_HANDLE;		        /* image half convolved */
+  VGImage last_row = VG_INVALID_HANDLE;
+  VGImage last_row_c = VG_INVALID_HANDLE;		/* last row convolved */
+  VGImage both = VG_INVALID_HANDLE;
+  VGImage added = VG_INVALID_HANDLE;
+  
   VGint img1_width = vgGetParameteri(img1, VG_IMAGE_WIDTH);
 #if CVPI_CAREFUL == 1
   error = vgGetError();
@@ -357,7 +319,7 @@ VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGsho
 
   VGshort kernel[2] = {b,a};	/* only place where `a' and `b' are used */
   unsigned long itter = 0;
-  VGImage output = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+  output = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
@@ -365,10 +327,6 @@ VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGsho
   }
 
   if(2*img1_height > EGL_CONFIG_MAX_HEIGHT) {
-    VGImage half;			/* image half original */
-    VGImage half_c;		/* image half convolved */
-    VGImage last_row;
-    VGImage last_row_c;		/* last row convolved */
     VGint max;
     if(!(img1_height % 2)) { 	/* even height */
       half = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
@@ -381,7 +339,7 @@ VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGsho
       error = vgGetError();
       if(error != VG_NO_ERROR) {
 	cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-	vgDestroyImage(half);
+	vgDestroyImageSafe(half);
 	vgFlush();
 	return VG_INVALID_HANDLE;
       }
@@ -397,7 +355,7 @@ VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGsho
       error = vgGetError();
       if(error != VG_NO_ERROR) {
 	cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-	vgDestroyImage(last_row);
+	vgDestroyImageSafe(last_row);
 	vgFlush();
 	return VG_INVALID_HANDLE;
       }
@@ -406,8 +364,8 @@ VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGsho
 	error = vgGetError();
 	if(error != VG_NO_ERROR) {
 	  cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-	  vgDestroyImage(last_row);
-	  vgDestroyImage(last_row_c);
+	  vgDestroyImageSafe(last_row);
+	  vgDestroyImageSafe(last_row_c);
 	  vgFlush();
 	  return VG_INVALID_HANDLE;
 	}
@@ -415,9 +373,9 @@ VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGsho
 	error = vgGetError();
 	if(error != VG_NO_ERROR) {
 	  cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-	  vgDestroyImage(last_row);
-	  vgDestroyImage(last_row_c);
-	  vgDestroyImage(half);
+	  vgDestroyImageSafe(last_row);
+	  vgDestroyImageSafe(last_row_c);
+	  vgDestroyImageSafe(half);
 	  vgFlush();
 	  return VG_INVALID_HANDLE;
 	}
@@ -467,25 +425,25 @@ VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGsho
       vgCopyImage(output, 0, img1_height-1, last_row_c, 0, 0, img1_width, 1, VG_FALSE);
       vgFinish();
     }
-    vgDestroyImage(half);
-    vgDestroyImage(half_c);
-    vgDestroyImage(last_row);
-    vgDestroyImage(last_row_c);
+    vgDestroyImageSafe(half);
+    vgDestroyImageSafe(half_c);
+    vgDestroyImageSafe(last_row);
+    vgDestroyImageSafe(last_row_c);
   } else {
     /* both images together fit in a single buffer */
 
     /* combine the two images */
-    VGImage both = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2*img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+    both = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2*img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
       error = vgGetError();
       if(error != VG_NO_ERROR) {
 	cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
 	return VG_INVALID_HANDLE;
       }
-    VGImage added = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2*img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+    added = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2*img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
       error = vgGetError();
       if(error != VG_NO_ERROR) {
 	cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-	vgDestroyImage(added);
+	vgDestroyImageSafe(added);
 	vgFlush();
 	return VG_INVALID_HANDLE;
       }
@@ -505,9 +463,10 @@ VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGsho
       vgFinish();
     }
 
-    vgDestroyImage(both);
-    vgDestroyImage(added);
+    vgDestroyImageSafe(both);
+    vgDestroyImageSafe(added);
   }
+ TAKEDOWN:
   vgFlush();
   return output;
 }
@@ -542,7 +501,7 @@ VGImage cvpi_add_channels(const VGImage image, VGImageChannel channel1, VGImageC
       error = vgGetError();
       if(error != VG_NO_ERROR) {
 	cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-	vgDestroyImage(channel1_img);
+	vgDestroyImageSafe(channel1_img);
 	vgFlush();
 	return VG_INVALID_HANDLE;
       }
@@ -630,21 +589,21 @@ VGImage cvpi_add_channels(const VGImage image, VGImageChannel channel1, VGImageC
   vgFinish();
       if(result == VG_INVALID_HANDLE) {
 	cvpi_log_1("%s:%d:Unable to add channels\n", __func__, __LINE__);
-	vgDestroyImage(channel1_img);
-	vgDestroyImage(channel2_img);
+	vgDestroyImageSafe(channel1_img);
+	vgDestroyImageSafe(channel2_img);
 	vgFlush();
 	return VG_INVALID_HANDLE;
       }
   if(output_channels == (VG_RED | VG_GREEN | VG_BLUE | VG_ALPHA) || result == VG_INVALID_HANDLE) {
-    vgDestroyImage(channel1_img);
-    vgDestroyImage(channel2_img);
+    vgDestroyImageSafe(channel1_img);
+    vgDestroyImageSafe(channel2_img);
     vgFlush();
     return result;
   } else {
     VGImage result_combo = cvpi_combine_channelwise(result, image, output_channels);
-    vgDestroyImage(channel1_img);
-    vgDestroyImage(channel2_img);
-    vgDestroyImage(result);
+    vgDestroyImageSafe(channel1_img);
+    vgDestroyImageSafe(channel2_img);
+    vgDestroyImageSafe(result);
     vgFlush();
     return result_combo;
   }
@@ -823,7 +782,7 @@ VGImage cvpi_combine_channelwise(const VGImage img1, const VGImage img2, VGbitfi
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(img1_filtered);
+    vgDestroyImageSafe(img1_filtered);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -835,8 +794,8 @@ VGImage cvpi_combine_channelwise(const VGImage img1, const VGImage img2, VGbitfi
   if(output == VG_INVALID_HANDLE) {
     cvpi_log_1("%s:%d:Unable to add channels\n", __func__, __LINE__);
   }
-  vgDestroyImage(img1_filtered);
-  vgDestroyImage(img2_filtered);
+  vgDestroyImageSafe(img1_filtered);
+  vgDestroyImageSafe(img2_filtered);
   vgFlush();
   return output;
 }
@@ -1077,14 +1036,14 @@ VGImage cvpi_image_threshold_sector(const VGImage image, unsigned int sector_wid
 					  fill, invert, dependent);
       if(sector_image == VG_INVALID_HANDLE) {
 	cvpi_log_1("%s:%d:Unable to threshold sector\n", __func__, __LINE__);
-	vgDestroyImage(output_image);
+	vgDestroyImageSafe(output_image);
 	vgFlush();
 	return sector_image;
       }
       vgCopyImage(output_image, i*sector_width, j*sector_height,
 		  sector_image,
 		  0, 0, sector_width, sector_height, VG_FALSE);
-      vgDestroyImage(sector_image);
+      vgDestroyImageSafe(sector_image);
       vgFinish();
     }
   }
@@ -1102,14 +1061,14 @@ VGImage cvpi_image_threshold_sector(const VGImage image, unsigned int sector_wid
 					fill, invert, dependent);
       if(sector_image == VG_INVALID_HANDLE) {
 	cvpi_log_1("%s:%d:Unable to threshold sector\n", __func__, __LINE__);
-	vgDestroyImage(output_image);
+	vgDestroyImageSafe(output_image);
 	vgFlush();
 	return sector_image;
       }
     vgCopyImage(output_image, image_width - thinness, j*sector_height,
 		sector_image,
 		0, 0, thinness, sector_height, VG_FALSE);
-    vgDestroyImage(sector_image);
+    vgDestroyImageSafe(sector_image);
     vgFinish();
   }
 
@@ -1125,14 +1084,14 @@ VGImage cvpi_image_threshold_sector(const VGImage image, unsigned int sector_wid
 					fill, invert, dependent);
       if(sector_image == VG_INVALID_HANDLE) {
 	cvpi_log_1("%s:%d:Unable to threshold sector\n", __func__, __LINE__);
-	vgDestroyImage(output_image);
+	vgDestroyImageSafe(output_image);
 	vgFlush();
 	return sector_image;
       }
     vgCopyImage(output_image, i*sector_width, image_height - shortness,
 		sector_image,
 		0, 0, sector_width, shortness, VG_FALSE);
-    vgDestroyImage(sector_image);
+    vgDestroyImageSafe(sector_image);
     vgFinish();
   }
 
@@ -1147,14 +1106,14 @@ VGImage cvpi_image_threshold_sector(const VGImage image, unsigned int sector_wid
 				      fill, invert, dependent);
       if(sector_image == VG_INVALID_HANDLE) {
 	cvpi_log_1("%s:%d:Unable to threshold sector\n", __func__, __LINE__);
-	vgDestroyImage(output_image);
+	vgDestroyImageSafe(output_image);
 	vgFlush();
 	return sector_image;
       }
   vgCopyImage(output_image, image_width - thinness, image_height - shortness,
 	      sector_image,
 	      0, 0, thinness, shortness, VG_FALSE);
-  vgDestroyImage(sector_image);
+  vgDestroyImageSafe(sector_image);
   vgFinish();
 
   return output_image;
@@ -1269,19 +1228,19 @@ VGImage cvpi_image_mean_gpu(const VGImage image) {
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(first_image);
+    vgDestroyImageSafe(first_image);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
     vgConvolveNormal(mean_image, first_image, 1, 2, 0, 0, kernel, 0.5, 0, VG_TILE_PAD);
     vgFinish();
-    vgDestroyImage(first_image);
+    vgDestroyImageSafe(first_image);
     vgFinish();
     first_image = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(mean_image);
+    vgDestroyImageSafe(mean_image);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1296,7 +1255,7 @@ VGImage cvpi_image_mean_gpu(const VGImage image) {
 		      4*image_width, CVPI_COLOR_SPACE, 0, 0, image_width, image_height);
     free(debug_memory);
 #endif
-    vgDestroyImage(mean_image);
+    vgDestroyImageSafe(mean_image);
     vgFinish();
     /* Repeat until there is only one row left. Turn the row into a
        column and repeat the averaging until there is only one cell
@@ -1319,7 +1278,7 @@ VGImage cvpi_image_mean_gpu(const VGImage image) {
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(first_image);
+    vgDestroyImageSafe(first_image);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1331,13 +1290,13 @@ VGImage cvpi_image_mean_gpu(const VGImage image) {
 		      4*image_width, CVPI_COLOR_SPACE, 0, 0, image_width, image_height);
     free(debug_memory);
 #endif
-    vgDestroyImage(first_image);
+    vgDestroyImageSafe(first_image);
     vgFinish();
     first_image = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height, VG_IMAGE_QUALITY_NONANTIALIASED);
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(mean_image);
+    vgDestroyImageSafe(mean_image);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1351,10 +1310,10 @@ VGImage cvpi_image_mean_gpu(const VGImage image) {
 		      4*image_width, CVPI_COLOR_SPACE, 0, 0, image_width, image_height);
     free(debug_memory);
 #endif
-    vgDestroyImage(mean_image);
+    vgDestroyImageSafe(mean_image);
     vgFinish();
   }
-  //  vgDestroyImage(mean_image);
+  //  vgDestroyImageSafe(mean_image);
 
   return first_image;
 }
@@ -1459,7 +1418,7 @@ VGImage cvpi_image_rgba_to_bw(const VGImage image, VGImageChannel sourceChannel,
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(bw);
+    vgDestroyImageSafe(bw);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1468,7 +1427,7 @@ VGImage cvpi_image_rgba_to_bw(const VGImage image, VGImageChannel sourceChannel,
 
   vgCopyImage(bw, 0, 0, intermediate, 0, 0, img1_width, img1_height, VG_FALSE);
   vgFinish();
-  vgDestroyImage(intermediate);
+  vgDestroyImageSafe(intermediate);
   vgFlush();
   return bw;
 }
@@ -1492,7 +1451,7 @@ static VGImage cvpi_image_logcial_common(const VGImage image1, const VGImage ima
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(image1_scaled);
+    vgDestroyImageSafe(image1_scaled);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1545,8 +1504,8 @@ static VGImage cvpi_image_logcial_common(const VGImage image1, const VGImage ima
 
   if(sum == VG_INVALID_HANDLE) {
     cvpi_log_1("%s:%d:Add images failed\n", __func__, __LINE__);
-    vgDestroyImage(image1_scaled);
-    vgDestroyImage(image2_scaled);
+    vgDestroyImageSafe(image1_scaled);
+    vgDestroyImageSafe(image2_scaled);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1574,8 +1533,8 @@ static VGImage cvpi_image_logcial_common(const VGImage image1, const VGImage ima
 	   logic_array, logic_array, logic_array, logic_array,
 	   OUTPUT_LINEAR, VG_FALSE);
   vgFinish();
-  vgDestroyImage(sum);
-  vgDestroyImage(image2_scaled);
+  vgDestroyImageSafe(sum);
+  vgDestroyImageSafe(image2_scaled);
   vgFlush();
   return image1_scaled;
 }
@@ -1630,7 +1589,7 @@ static VGImage cvpi_image_morph_common(const VGImage image, const VGshort * kern
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(binary);
+    vgDestroyImageSafe(binary);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1668,7 +1627,7 @@ static VGImage cvpi_image_morph_common(const VGImage image, const VGshort * kern
   // free(original_fill);
   // free(new_fill);
 
-  vgDestroyImage(binary);
+  vgDestroyImageSafe(binary);
   vgFlush();
   return convolved;
 }
@@ -1689,7 +1648,7 @@ VGImage cvpi_image_dialate(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_B
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(convolved);
+    vgDestroyImageSafe(convolved);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1704,7 +1663,7 @@ VGImage cvpi_image_dialate(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_B
 	   dialation,dialation,dialation,dialation,
 	   OUTPUT_LINEAR, VG_FALSE);
   vgFinish();
-  vgDestroyImage(convolved);
+  vgDestroyImageSafe(convolved);
   vgFlush();
   return dialated;
 }
@@ -1727,7 +1686,7 @@ VGImage cvpi_image_erode(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOO
   error = vgGetError();
   if(error != VG_NO_ERROR) {
     cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-    vgDestroyImage(convolved);
+    vgDestroyImageSafe(convolved);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1742,7 +1701,7 @@ VGImage cvpi_image_erode(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOO
 	   erosion,erosion,erosion,erosion,
 	   OUTPUT_LINEAR, VG_FALSE);
   vgFinish();
-  vgDestroyImage(convolved);
+  vgDestroyImageSafe(convolved);
   vgFlush();
   return eroded;
 }
@@ -1772,7 +1731,7 @@ VGImage cvpi_image_hit_miss(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_
   vgFinish();
   if(convolved1 == VG_INVALID_HANDLE) {
     cvpi_log_1("%s:%d:cvpi_image_morph_common failed\n", __func__, __LINE__);
-    vgDestroyImage(convolved0);
+    vgDestroyImageSafe(convolved0);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1780,8 +1739,8 @@ VGImage cvpi_image_hit_miss(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_
   vgFinish();
   if(convolved2 == VG_INVALID_HANDLE) {
     cvpi_log_1("%s:%d:cvpi_image_morph_common failed\n", __func__, __LINE__);
-    vgDestroyImage(convolved0);
-    vgDestroyImage(convolved1);
+    vgDestroyImageSafe(convolved0);
+    vgDestroyImageSafe(convolved1);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1789,9 +1748,9 @@ VGImage cvpi_image_hit_miss(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_
   vgFinish();
   if(convolved3 == VG_INVALID_HANDLE) {
     cvpi_log_1("%s:%d:cvpi_image_morph_common failed\n", __func__, __LINE__);
-    vgDestroyImage(convolved0);
-    vgDestroyImage(convolved1);
-    vgDestroyImage(convolved2);
+    vgDestroyImageSafe(convolved0);
+    vgDestroyImageSafe(convolved1);
+    vgDestroyImageSafe(convolved2);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1799,10 +1758,10 @@ VGImage cvpi_image_hit_miss(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_
   vgFinish();
   if(or01 == VG_INVALID_HANDLE) {
     cvpi_log_1("%s:%d:cvpi_image_logical_or failed\n", __func__, __LINE__);
-    vgDestroyImage(convolved0);
-    vgDestroyImage(convolved1);
-    vgDestroyImage(convolved2);
-    vgDestroyImage(convolved3);
+    vgDestroyImageSafe(convolved0);
+    vgDestroyImageSafe(convolved1);
+    vgDestroyImageSafe(convolved2);
+    vgDestroyImageSafe(convolved3);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -1810,23 +1769,23 @@ VGImage cvpi_image_hit_miss(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_
   vgFinish();
   if(or23 == VG_INVALID_HANDLE) {
     cvpi_log_1("%s:%d:cvpi_image_logical_or failed\n", __func__, __LINE__);
-    vgDestroyImage(convolved0);
-    vgDestroyImage(convolved1);
-    vgDestroyImage(convolved2);
-    vgDestroyImage(convolved3);
-    vgDestroyImage(or01);
+    vgDestroyImageSafe(convolved0);
+    vgDestroyImageSafe(convolved1);
+    vgDestroyImageSafe(convolved2);
+    vgDestroyImageSafe(convolved3);
+    vgDestroyImageSafe(or01);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
   VGImage or0123 = cvpi_image_logical_or(or01, or23, t_c, f_c, nonzero_true);
   vgFinish();
 
-  vgDestroyImage(convolved0);
-  vgDestroyImage(convolved1);
-  vgDestroyImage(convolved2);
-  vgDestroyImage(convolved3);
-  vgDestroyImage(or01);
-  vgDestroyImage(or23);
+  vgDestroyImageSafe(convolved0);
+  vgDestroyImageSafe(convolved1);
+  vgDestroyImageSafe(convolved2);
+  vgDestroyImageSafe(convolved3);
+  vgDestroyImageSafe(or01);
+  vgDestroyImageSafe(or23);
   vgFlush();
   return or0123;
 }
@@ -1840,7 +1799,7 @@ VGImage cvpi_image_thin(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL
   }
   VGImage thinned = cvpi_image_logical_complement(image, hm, t_c, f_c, nonzero_true);
   vgFinish();
-  vgDestroyImage(hm);
+  vgDestroyImageSafe(hm);
   vgFlush();
   return thinned;
 }
@@ -1854,7 +1813,7 @@ VGImage cvpi_image_thicken(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_B
   }
   VGImage thickened = cvpi_image_logical_or(image, hm, t_c, f_c, nonzero_true);
   vgFinish();
-  vgDestroyImage(hm);
+  vgDestroyImageSafe(hm);
   vgFlush();
   return thickened;
 }
@@ -1876,7 +1835,7 @@ static VGubyte* channel_to_data(const VGImage image, VGImageChannel channel) {
       error = vgGetError();
       if(error != VG_NO_ERROR) {
 	cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-	vgDestroyImage(mono);
+	vgDestroyImageSafe(mono);
 	vgFlush();
 	return NULL;
       }
@@ -1904,7 +1863,7 @@ static VGubyte* channel_to_data(const VGImage image, VGImageChannel channel) {
     }
     vgColorMatrix(alpha, image, alpha_switch);
     vgCopyImage(mono, 0, 0, alpha, 0, 0, image_width, image_height, VG_FALSE);
-    vgDestroyImage(alpha);
+    vgDestroyImageSafe(alpha);
   } else {
     vgCopyImage(mono, 0, 0, image, 0, 0, image_width, image_height, VG_FALSE);
   }
@@ -1918,7 +1877,7 @@ static VGubyte* channel_to_data(const VGImage image, VGImageChannel channel) {
   /* copy the data from alpha into memory */
   vgGetImageSubData(mono, (void*)data, image_width * sizeof(*data), VG_A_8, 0, 0, image_width, image_height);
   vgFinish();
-  vgDestroyImage(mono);
+  vgDestroyImageSafe(mono);
   vgFlush();
   return data;
 }
@@ -2215,7 +2174,7 @@ VGImage cvpi_magnitude(const VGImage image1, const VGImage image2, enum cvpi_int
       error = vgGetError();
       if(error != VG_NO_ERROR) {
 	cvpi_log_2("%s:%d:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
-	vgDestroyImage(img1_2);
+	vgDestroyImageSafe(img1_2);
 	vgFlush();
 	return VG_INVALID_HANDLE;
       }
@@ -2251,8 +2210,8 @@ VGImage cvpi_magnitude(const VGImage image1, const VGImage image2, enum cvpi_int
   vgFinish();
   if(sum == VG_INVALID_HANDLE) {
     cvpi_log_1("%s:%d:Add images failed\n", __func__, __LINE__);
-    vgDestroyImage(img1_2);
-    vgDestroyImage(sum);
+    vgDestroyImageSafe(img1_2);
+    vgDestroyImageSafe(sum);
     vgFlush();
     return VG_INVALID_HANDLE;
   }
@@ -2263,8 +2222,8 @@ VGImage cvpi_magnitude(const VGImage image1, const VGImage image2, enum cvpi_int
   vgColorMatrix(img2_2, img1_2, scaler);
   vgFinish();
 
-  vgDestroyImage(img1_2);
-  vgDestroyImage(sum);
+  vgDestroyImageSafe(img1_2);
+  vgDestroyImageSafe(sum);
 
   vgFlush();
   return img2_2;

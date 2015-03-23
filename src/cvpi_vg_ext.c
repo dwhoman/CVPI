@@ -40,7 +40,7 @@ inline void vgConvolveNormal(VGImage dst, VGImage src,
 			     VGint shiftX, VGint shiftY,
 			     const VGshort * kernel,
 			     VGfloat scale,
-			     unsigned char bias,
+			     short bias,
 			     VGTilingMode tilingMode) {
   vgConvolve(dst, src,
 	     kernelWidth, kernelHeight, shiftX, shiftY, 
@@ -53,7 +53,7 @@ inline void vgSeparableConvolveNormal(VGImage dst, VGImage src,
 				      const VGshort * kernelX,
 				      const VGshort * kernelY,
 				      VGfloat scale,
-				      unsigned char bias,
+				      short bias,
 				      VGTilingMode tilingMode) {
   vgSeparableConvolve(dst, src,
 		      kernelWidth, kernelHeight,
@@ -62,6 +62,35 @@ inline void vgSeparableConvolveNormal(VGImage dst, VGImage src,
 		      kernelY,
 		      scale,
 		      ((VGfloat)bias)/255,
+		      tilingMode);
+}
+
+inline void vgConvolveNormalNoShift(VGImage dst, VGImage src,
+				    VGint kernelWidth, VGint kernelHeight,
+				    const VGshort * kernel,
+				    VGfloat scale,
+				    short bias,
+				    VGTilingMode tilingMode) {
+  vgConvolveNormal(dst, src,
+		   kernelWidth, kernelHeight, 
+		   kernelWidth-1, kernelHeight-1, 
+		   kernel, scale, bias, tilingMode);
+}
+
+inline void vgSeparableConvolveNormalNoShift(VGImage dst, VGImage src,
+					     VGint kernelWidth, VGint kernelHeight,
+					     const VGshort * kernelX,
+					     const VGshort * kernelY,
+					     VGfloat scale,
+					     short bias,
+					     VGTilingMode tilingMode) {
+  vgSeparableConvolve(dst, src,
+		      kernelWidth, kernelHeight,
+		      kernelWidth - 1, kernelHeight - 1,
+		      kernelX,
+		      kernelY,
+		      scale,
+		      bias,
 		      tilingMode);
 }
 

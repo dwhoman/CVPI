@@ -114,13 +114,13 @@ VGImage cvpi_yuyv2yuva(const VGImage yuyv_image);
 
 /*!
    Add two image matrices each scaled by `a' and `b' respectively; for
-   each pixel \f$C_{i,j} = s\cdot(a\cdot A_{i,j} + b\cdot B_{i,j})+b\f$. If `a' or `b'
+   each pixel $C_{i,j} = s\cdot(a\cdot A_{i,j} + b\cdot B_{i,j})+t$. If `a' or `b'
    is negative, then the images are subtracted. Returns
    VG_INVALID_HANDLE if an error occurs.
 
    Preconditions: img1 and img2 must have the same dimensions
  */
-VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGshort b, VGfloat scale, VGfloat bias);
+VGImage cvpi_add_images(const VGImage img1, const VGImage img2, VGshort a, VGshort b, VGfloat scale, unsigned char bias);
 
 /* Add two channels in the same image.  The result is copied to all four channels. */
 VGImage cvpi_add_channels(const VGImage image, VGImageChannel channel1, VGImageChannel channel2,
