@@ -93,7 +93,9 @@ char* cvpi_egl_error_string(EGLint error) {
 #endif
 
 #if HAVE_BCM_HOST == 1
-/* based on code from egl_brcm_global_image_client.c */
+/* based on code from egl_brcm_global_image_client.c line 39, should
+   be sufficiently different given a different input parameter
+   type. Can't reasonably reproduce this functionality any other way. */
 EGLint cvpi_egl_bytes_per_pixel(enum cvpi_egl_pixel_format pixel_format) {
   switch(pixel_format) {
   case EGL_PIXEL_FORMAT_ARGB_8888_BRCM:     return 4;
@@ -108,12 +110,10 @@ EGLint cvpi_egl_bytes_per_pixel(enum cvpi_egl_pixel_format pixel_format) {
 
 cvpi_egl_settings cvpi_egl_settings_create(void) {
   cvpi_egl_settings egl_settings_p = malloc(sizeof(*egl_settings_p));
-#ifdef CVPI_ERROR_CHECK
   if(egl_settings_p == NULL) {
     fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
     return NULL;
   }
-#endif
 
   egl_settings_p->width = EGL_CONFIG_MAX_WIDTH;
   egl_settings_p->height = EGL_CONFIG_MAX_HEIGHT;
@@ -177,12 +177,11 @@ cvpi_egl_settings cvpi_egl_settings_create(void) {
 
 cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
   cvpi_egl_instance egl_instance = malloc(sizeof(*egl_instance));
-#ifdef CVPI_ERROR_CHECK
   if(egl_instance == NULL) {
     fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
     return NULL;
   }
-#endif  
+
   egl_instance->egl_settings = egl_settings_p;
 
   /* tests needed in multiple places */
@@ -311,7 +310,7 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
     fprintf(cvpi_log_file, "%s:%d: eglChooseConfig number of configurations is %d\n", __func__, __LINE__, number_configs);
   }
 
-  /* TODO: when this error is raised, it currently segfaults. */
+  /* TODO: when this error is raised, it currently segfaults in the takedown code. */
   if(0 == number_configs || EGL_TRUE != good) {
     if(!number_configs) {
       fprintf(cvpi_log_file, "%s:%d: first call to eglChooseConfig: number of configurations is zero\n", __func__, __LINE__);
@@ -320,12 +319,12 @@ cvpi_egl_instance cvpi_egl_instance_setup(cvpi_egl_settings egl_settings_p) {
     goto undoInitialize;
   }
   egl_instance->matching_configs = (EGLConfig*)malloc(number_configs * sizeof(egl_instance->matching_configs));
-#ifdef CVPI_ERROR_CHECK
+
   if(egl_instance->matching_configs == NULL) {
     fprintf(cvpi_log_file, "%s:%d: malloc returned NULL: errno = %d\n", __func__, __LINE__, errno);
     goto undoInitialize;
   }
-#endif
+
   good = eglChooseConfig(egl_instance->egl_display, egl_instance->attrib_list, egl_instance->matching_configs, number_configs, &(number_configs));
 
   if(EGL_TRUE != good) {

@@ -25,7 +25,7 @@ inline void vgConvolveNormal(VGImage dst, VGImage src,
 			     VGint shiftX, VGint shiftY,
 			     const VGshort * kernel,
 			     VGfloat scale,
-			     short bias,
+			     VGfloat bias,
 			     VGTilingMode tilingMode);
 
 inline void vgSeparableConvolveNormal(VGImage dst, VGImage src,
@@ -34,18 +34,35 @@ inline void vgSeparableConvolveNormal(VGImage dst, VGImage src,
 				      const VGshort * kernelX,
 				      const VGshort * kernelY,
 				      VGfloat scale,
-				      short bias,
+				      VGfloat bias,
 				      VGTilingMode tilingMode);
   
   /* The vgConvolve will shift the output relative to the input unless
-     shiftX = width -1 and shiftY = height -
-     1. vgConvolveNormalNoShift and
-     vgSeparableConvolveNormalNoShift do that shift automatically. */
+     shiftX = ceil(width/2) and shiftY = ceil(height/2).
+
+     vgConvolveNoShift, vgSeparableConvolveNoShift,
+     vgConvolveNormalNoShift and vgSeparableConvolveNormalNoShift do
+     that shift automatically. */
+inline void vgConvolveNoShift(VGImage dst, VGImage src,
+			      VGint kernelWidth, VGint kernelHeight,
+			      const VGshort * kernel,
+			      VGfloat scale,
+			      VGfloat bias,
+			      VGTilingMode tilingMode);
+
+inline void vgSeparableConvolveNoShift(VGImage dst, VGImage src,
+				       VGint kernelWidth, VGint kernelHeight,
+				       const VGshort * kernelX,
+				       const VGshort * kernelY,
+				       VGfloat scale,
+				       VGfloat bias,
+				       VGTilingMode tilingMode);
+  
 inline void vgConvolveNormalNoShift(VGImage dst, VGImage src,
 				    VGint kernelWidth, VGint kernelHeight,
 				    const VGshort * kernel,
 				    VGfloat scale,
-				    short bias,
+				    VGfloat bias,
 				    VGTilingMode tilingMode);
 
   inline void vgSeparableConvolveNormalNoShift(VGImage dst, VGImage src,
@@ -53,7 +70,7 @@ inline void vgConvolveNormalNoShift(VGImage dst, VGImage src,
 					       const VGshort * kernelX,
 					       const VGshort * kernelY,
 					       VGfloat scale,
-					       short bias,
+					       VGfloat bias,
 					       VGTilingMode tilingMode);
 
 /* The vgColorMatrix convolution matrix elemeents m[0][4], m[1][4],
@@ -70,8 +87,6 @@ VGImage vgCreateImagePainted(VGImageFormat fmt,
 
   /* Returns the number of bits in FORMAT */
 VGint vgPixelBits(VGImageFormat format);
-
-#define vgDestroyImageSafe(image)do{if(image != VG_INVALID_HANDLE){vgDestroyImage(image); image=VG_INVALID_HANDLE;}}while(0)
 
 /* VGPixel vgPixelFormatColorBitOffsets(VGImageFormat format); */
 

@@ -11,28 +11,28 @@ CVPI_BOOL test_cvpi_pixel(void);
 /* cvpi_yuyv2yuva */
 CVPI_BOOL test_cvpi_yuyv2yuva(void);
 
-/* cvpi_add_images */
-CVPI_BOOL test_cvpi_add_images_odd(void);
-CVPI_BOOL test_cvpi_add_images_single(void);
-CVPI_BOOL test_cvpi_add_images_even(void);
+/* cvpi_image_add */
+CVPI_BOOL test_cvpi_image_add_odd(void);
+CVPI_BOOL test_cvpi_image_add_single(void);
+CVPI_BOOL test_cvpi_image_add_even(void);
 CVPI_BOOL test_cvpi_subtract_images_odd(void);
-CVPI_BOOL test_cvpi_add_images_odd_scale_add(void);
+CVPI_BOOL test_cvpi_image_add_odd_scale_add(void);
 CVPI_BOOL test_cvpi_subtract_images_odd_scale_add(void);
-CVPI_BOOL test_cvpi_add_images_huge_even(void);
-CVPI_BOOL test_cvpi_add_images_huge_odd(void);
+CVPI_BOOL test_cvpi_image_add_huge_even(void);
+CVPI_BOOL test_cvpi_image_add_huge_odd(void);
 
-/* cvpi_add_channels */
-CVPI_BOOL test_cvpi_add_channels_RB(void);
-CVPI_BOOL test_cvpi_add_channels_RR(void);
+/* cvpi_channel_add */
+CVPI_BOOL test_cvpi_channel_add_RB(void);
+CVPI_BOOL test_cvpi_channel_add_RR(void);
 
-/* cvpi_add_channels_color */
-CVPI_BOOL test_cvpi_add_channels_color(void);
+/* cvpi_color_channels_add */
+CVPI_BOOL test_cvpi_color_channels_add(void);
 
-/* cvpi_add_channels_all */
-CVPI_BOOL test_cvpi_add_channels_all(void);
+/* cvpi_all_channels_add */
+CVPI_BOOL test_cvpi_all_channels_add(void);
 
-/* cvpi_combine_channelwise */
-CVPI_BOOL test_cvpi_combine_channelwise(void);
+/* cvpi_image_combine_channelwise */
+CVPI_BOOL test_cvpi_image_combine_channelwise(void);
 
 /* cvpi_channel_threshold */
 CVPI_BOOL test_cvpi_channel_threshold(void);
@@ -56,9 +56,9 @@ CVPI_BOOL test_cvpi_image_threshold_sector_inv_dependent(void);
 /* cvpi_image_threshold_adaptive */
 /* cvpi_channel_threshold_adaptive */
 
-/* cvpi_image_channel_mask */
-CVPI_BOOL test_cvpi_image_channel_mask_add(void);
-CVPI_BOOL test_cvpi_image_channel_mask_subtract(void);
+/* cvpi_image_mask_channel */
+CVPI_BOOL test_cvpi_image_mask_channel_add(void);
+CVPI_BOOL test_cvpi_image_mask_channel_subtract(void);
 
 /* cvpi_image_mean */
 CVPI_BOOL test_cvpi_image_mean_small(void);
@@ -68,7 +68,7 @@ CVPI_BOOL test_cvpi_image_mean_huge(void);
 /* Compare the mean function against the arithmetic mean functoion. */
 CVPI_BOOL test_cvpi_image_mean_compare(void);
 
-/* cvpi_image_rgba_to_bw */
+/* cvpi_image_rgba2bw */
 CVPI_BOOL test_cvpi_image_rgba_to_binary(void);
 
 /* Logical operation tests ending in NOT test zero = true and non-zero
@@ -167,7 +167,7 @@ CVPI_BOOL test_cvpi_pixel_color_average(void);
 /* CVPI_BOOL test_cvpi_pixel2yuv(void); */
 CVPI_BOOL test_cvpi_avuy2ayuv(void);
 
-CVPI_BOOL test_cvpi_image_rgba(void);
+CVPI_BOOL test_cvpi_image2rgba(void);
 
 /* OpenVG behavior tests */
 /* Overflow behavior is undefined in the standard. The implementation

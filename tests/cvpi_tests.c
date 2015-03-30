@@ -123,21 +123,21 @@ int main() {
   TEST(test_cvpi_pixel);
 
   TEST(test_cvpi_yuyv2yuva);
-  TEST(test_cvpi_add_images_odd);
-  TEST(test_cvpi_add_images_single);
-  TEST(test_cvpi_add_images_even);
+  TEST(test_cvpi_image_add_odd);
+  TEST(test_cvpi_image_add_single);
+  TEST(test_cvpi_image_add_even);
   TEST(test_cvpi_subtract_images_odd);
-  TEST(test_cvpi_add_images_odd_scale_add);
+  TEST(test_cvpi_image_add_odd_scale_add);
   TEST(test_cvpi_subtract_images_odd_scale_add);
   /* these tests can run out of memory */
-  /* TEST(test_cvpi_add_images_huge_even); */
-  /* TEST(test_cvpi_add_images_huge_odd); */
+  /* TEST(test_cvpi_image_add_huge_even); */
+  /* TEST(test_cvpi_image_add_huge_odd); */
 
-  TEST(test_cvpi_add_channels_RB);
-  TEST(test_cvpi_add_channels_RR);
-  TEST(test_cvpi_add_channels_color);
-  TEST(test_cvpi_add_channels_all);
-  TEST(test_cvpi_combine_channelwise);
+  TEST(test_cvpi_channel_add_RB);
+  TEST(test_cvpi_channel_add_RR);
+  TEST(test_cvpi_color_channels_add);
+  TEST(test_cvpi_all_channels_add);
+  TEST(test_cvpi_image_combine_channelwise);
 
   TEST(test_cvpi_channel_threshold);
   TEST(test_cvpi_channel_threshold_inv);
@@ -154,8 +154,8 @@ int main() {
   TEST(test_cvpi_image_threshold_sector_dependent);
   TEST(test_cvpi_image_threshold_sector_inv_dependent);
 
-  TEST(test_cvpi_image_channel_mask_add);
-  TEST(test_cvpi_image_channel_mask_subtract);
+  TEST(test_cvpi_image_mask_channel_add);
+  TEST(test_cvpi_image_mask_channel_subtract);
 
   TEST(test_cvpi_image_logical_and);
   TEST(test_cvpi_image_logical_and_NOT);
@@ -232,7 +232,7 @@ int main() {
   /* TEST(test_cvpi_image_mean_huge); */
   //TEST(test_cvpi_image_mean_compare);
 
-  TEST(test_cvpi_image_rgba);
+  TEST(test_cvpi_image2rgba);
 
   TEST(test_cvpi_image_rgba_to_binary);
   TEST(test_overflow_behavior);

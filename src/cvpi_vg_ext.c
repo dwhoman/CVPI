@@ -10,6 +10,13 @@
 #include <stdio.h>
 #endif
 
+#ifndef	_MATH_H
+#include <math.h>
+#endif
+
+/* 1/255 = 0.00392156862745 */
+#define INV255 0.00392156862745
+
 char* cvpi_vg_error_string(VGErrorCode error) {
   switch(error) {
   case VG_NO_ERROR:
@@ -40,12 +47,12 @@ inline void vgConvolveNormal(VGImage dst, VGImage src,
 			     VGint shiftX, VGint shiftY,
 			     const VGshort * kernel,
 			     VGfloat scale,
-			     short bias,
+			     VGfloat bias,
 			     VGTilingMode tilingMode) {
   vgConvolve(dst, src,
-	     kernelWidth, kernelHeight, shiftX, shiftY, 
-	     kernel, scale, ((VGfloat)bias)/255, tilingMode);
-}
+	     kernelWidth, kernelHeight, shiftX, shiftY,
+	     kernel, scale, bias * INV255, tilingMode);
+p}
 
 inline void vgSeparableConvolveNormal(VGImage dst, VGImage src,
 				      VGint kernelWidth, VGint kernelHeight,
@@ -53,7 +60,7 @@ inline void vgSeparableConvolveNormal(VGImage dst, VGImage src,
 				      const VGshort * kernelX,
 				      const VGshort * kernelY,
 				      VGfloat scale,
-				      short bias,
+				      VGfloat bias,
 				      VGTilingMode tilingMode) {
   vgSeparableConvolve(dst, src,
 		      kernelWidth, kernelHeight,
@@ -61,7 +68,36 @@ inline void vgSeparableConvolveNormal(VGImage dst, VGImage src,
 		      kernelX,
 		      kernelY,
 		      scale,
-		      ((VGfloat)bias)/255,
+		      bias * INV255,
+		      tilingMode);
+}
+
+inline void vgConvolveNoShift(VGImage dst, VGImage src,
+			      VGint kernelWidth, VGint kernelHeight,
+			      const VGshort * kernel,
+			      VGfloat scale,
+			      VGfloat bias,
+			      VGTilingMode tilingMode) {
+  vgConvolve(dst, src,
+	     kernelWidth, kernelHeight,
+	     (VGint)(ceil(kernelWidth*0.5)), (VGint)(ceil(kernelHeight*0.5)),
+	     kernel, scale, bias, tilingMode);
+}
+
+inline void vgSeparableConvolveNoShift(VGImage dst, VGImage src,
+				       VGint kernelWidth, VGint kernelHeight,
+				       const VGshort * kernelX,
+				       const VGshort * kernelY,
+				       VGfloat scale,
+				       VGfloat bias,
+				       VGTilingMode tilingMode) {
+  vgSeparableConvolve(dst, src,
+		      kernelWidth, kernelHeight,
+		      (VGint)(ceil(kernelWidth*0.5)), (VGint)(ceil(kernelHeight*0.5)),
+		      kernelX,
+		      kernelY,
+		      scale,
+		      bias,
 		      tilingMode);
 }
 
@@ -69,11 +105,11 @@ inline void vgConvolveNormalNoShift(VGImage dst, VGImage src,
 				    VGint kernelWidth, VGint kernelHeight,
 				    const VGshort * kernel,
 				    VGfloat scale,
-				    short bias,
+				    VGfloat bias,
 				    VGTilingMode tilingMode) {
   vgConvolveNormal(dst, src,
-		   kernelWidth, kernelHeight, 
-		   kernelWidth-1, kernelHeight-1, 
+		   kernelWidth, kernelHeight,
+		   (VGint)(ceil(kernelWidth*0.5)), (VGint)(ceil(kernelHeight*0.5)),
 		   kernel, scale, bias, tilingMode);
 }
 
@@ -82,16 +118,16 @@ inline void vgSeparableConvolveNormalNoShift(VGImage dst, VGImage src,
 					     const VGshort * kernelX,
 					     const VGshort * kernelY,
 					     VGfloat scale,
-					     short bias,
+					     VGfloat bias,
 					     VGTilingMode tilingMode) {
-  vgSeparableConvolve(dst, src,
-		      kernelWidth, kernelHeight,
-		      kernelWidth - 1, kernelHeight - 1,
-		      kernelX,
-		      kernelY,
-		      scale,
-		      bias,
-		      tilingMode);
+  vgSeparableConvolveNormal(dst, src,
+			    kernelWidth, kernelHeight,
+			    (VGint)(ceil(kernelWidth*0.5)), (VGint)(ceil(kernelHeight*0.5)),
+			    kernelX,
+			    kernelY,
+			    scale,
+			    bias,
+			    tilingMode);
 }
 
 void vgColorMatrixNormal(VGImage dst, VGImage src,
@@ -113,16 +149,16 @@ void vgColorMatrixNormal(VGImage dst, VGImage src,
   m[13] = matrix[13];
   m[14] = matrix[14];
   m[15] = matrix[15];
-  m[16] = matrix[16] / 255;
-  m[17] = matrix[17] / 255;
-  m[18] = matrix[18] / 255;
-  m[19] = matrix[19] / 255;
+  m[16] = matrix[16] * INV255;
+  m[17] = matrix[17] * INV255;
+  m[18] = matrix[18] * INV255;
+  m[19] = matrix[19] * INV255;
   vgColorMatrix(dst, src, m);
 }
 
 VGImage vgCreateImagePainted(VGImageFormat fmt,
 			     VGint width, VGint height, VGbitfield quality,
-			     unsigned char red, unsigned char green, 
+			     unsigned char red, unsigned char green,
 			     unsigned char blue, unsigned char alpha) {
   const VGfloat image1_color[20] = {
     0,0,0,0,
@@ -133,7 +169,7 @@ VGImage vgCreateImagePainted(VGImageFormat fmt,
     red,green,blue,alpha
   };
   VGErrorCode error;
-  VGImage image0 = vgCreateImage(fmt, width, height, quality); 
+  VGImage image0 = vgCreateImage(fmt, width, height, quality);
 #ifdef CVPI_ERROR_CHECK
   error = vgGetError();
   if(error != VG_NO_ERROR) {
@@ -141,7 +177,7 @@ VGImage vgCreateImagePainted(VGImageFormat fmt,
     return VG_INVALID_HANDLE;
   }
 #endif
-  VGImage image1 = vgCreateImage(fmt, width, height, quality); 
+  VGImage image1 = vgCreateImage(fmt, width, height, quality);
 #ifdef CVPI_ERROR_CHECK
   error = vgGetError();
   if(error != VG_NO_ERROR) {
@@ -150,7 +186,7 @@ VGImage vgCreateImagePainted(VGImageFormat fmt,
     vgFlush();
     return VG_INVALID_HANDLE;
   }
-#endif  
+#endif
   vgColorMatrixNormal(image1, image0, image1_color);
   vgFinish();
   vgDestroyImage(image0);

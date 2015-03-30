@@ -121,7 +121,7 @@ struct cvpi_bitmap_header {
   DWORD        bV4GammaRed;
   DWORD        bV4GammaGreen;
   DWORD        bV4GammaBlue;     
-} __attribute__ ((__packed__));
+} __attribute__ ((__packed__, aligned(4)));
 
 /* from http://msdn.microsoft.com/en-us/library/cc250396.aspx */
 
@@ -133,7 +133,7 @@ enum LogicalColorSpace {
 };
 
 typedef struct {
-  unsigned char bytes;		/* bytes per pixel */
+  WORD         bytes;		/* bytes per pixel */
   DWORD        bV4RedMask;
   DWORD        bV4GreenMask;
   DWORD        bV4BlueMask;
@@ -276,7 +276,7 @@ void cvpi_bmp_header_write(FILE *write_ptr,
   bmph.bV4BlueMask = pf.bV4BlueMask;
   bmph.bV4AlphaMask = pf.bV4AlphaMask;
   bmph.bV4CSType = pf.bV4CSType;
-  bmph.bV4Endpoints_0 = 0; 	/* easier to manage with malloc and free than using a pointer to an array */
+  bmph.bV4Endpoints_0 = 0; 	
   bmph.bV4Endpoints_1 = 0; 
   bmph.bV4Endpoints_2 = 0; 
   bmph.bV4Endpoints_3 = 0; 

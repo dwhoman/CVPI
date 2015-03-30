@@ -56,7 +56,7 @@ int cvpi_log_file_unset(void) {
 typedef struct {
   int type;			/* printf format type */
   char* format;			/* printf format string */
-  char* func;			/* __func__ */
+  char* func;			/* __func__ or __FILE__ */
   int line;			/* __LINE__ */
   char* text;			/* %s argument */
   int num1;			/* %d arguments */
@@ -70,59 +70,60 @@ static void print_threaded(void* data_) {
 
   int status = pthread_detach(pthread_self());
 
-  switch(data->type) {
-  case 1:
-    fprintf(cvpi_log_file, data->format, data->func, data->line);
-    free(data->format);
-    free(data->func);
-    data->func = NULL;
-    data->format = NULL;
-    break;
-  case 2:
-    fprintf(cvpi_log_file, data->format, data->func, data->line, data->text);
-    free(data->format);
-    free(data->text);
-    free(data->func);
-    data->func = NULL;
-    data->format = NULL;
-    data->text = NULL;
-    break;
-  case 3:
-    fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1);
-    free(data->format);
-    free(data->func);
-    data->func = NULL;
-    data->format = NULL;
-    break;
-  case 4:
-    fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1, data->num2);
-    free(data->format);
-    free(data->func);
-    data->func = NULL;
-    data->format = NULL;
-    break;
-  case 5:
-    fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1, 
-	    data->num2, data->num3);
-    free(data->format);
-    free(data->func);
-    data->func = NULL;
-    data->format = NULL;
-    break;
-  case 6:
-    fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1, 
-	    data->num2, data->num3, data->num4);
-    free(data->format);
-    free(data->func);
-    data->func = NULL;
-    data->format = NULL;
-    break;
-  default:
-    fprintf(cvpi_log_file, "Bad cvpi_log_format\n");
-    break;
+  if(data != NULL) {
+    switch(data->type) {
+    case 1:
+      fprintf(cvpi_log_file, data->format, data->func, data->line);
+      free(data->format);
+      free(data->func);
+      data->func = NULL;
+      data->format = NULL;
+      break;
+    case 2:
+      fprintf(cvpi_log_file, data->format, data->func, data->line, data->text);
+      free(data->format);
+      free(data->text);
+      free(data->func);
+      data->func = NULL;
+      data->format = NULL;
+      data->text = NULL;
+      break;
+    case 3:
+      fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1);
+      free(data->format);
+      free(data->func);
+      data->func = NULL;
+      data->format = NULL;
+      break;
+    case 4:
+      fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1, data->num2);
+      free(data->format);
+      free(data->func);
+      data->func = NULL;
+      data->format = NULL;
+      break;
+    case 5:
+      fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1, 
+	      data->num2, data->num3);
+      free(data->format);
+      free(data->func);
+      data->func = NULL;
+      data->format = NULL;
+      break;
+    case 6:
+      fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1, 
+	      data->num2, data->num3, data->num4);
+      free(data->format);
+      free(data->func);
+      data->func = NULL;
+      data->format = NULL;
+      break;
+    default:
+      fprintf(cvpi_log_file, "Bad cvpi_log_format\n");
+      break;
+    }
+    free(data);
   }
-
-  free(data);
 
   if(status != 0) {
     fprintf(stderr, "print_threaded failed to detach with status = %d\n", status);

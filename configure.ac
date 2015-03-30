@@ -188,8 +188,8 @@ dnl there should only be one
 AC_CONFIG_FILES([Makefile
 		src/Makefile
 		include/Makefile
+		tests/Makefile
 		])
 dnl		bindings/Makefile
-dnl		tests/Makefile
 dnl		examples/Makefile
 AC_OUTPUT
