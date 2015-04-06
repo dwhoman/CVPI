@@ -17,7 +17,9 @@
 CVPI_BOOL test_cvpi_egl_settings_create(void) {
   cvpi_egl_settings settings = cvpi_egl_settings_create();
   int check = cvpi_egl_settings_check(settings);
-  free(settings);
+  if(settings != NULL) {
+    free(settings);
+  }
   return check;
 }
 CVPI_BOOL test_cvpi_egl_instance_setup_takedown(void) {
@@ -33,12 +35,18 @@ CVPI_BOOL test_cvpi_egl_instance_setup_takedown(void) {
     fprintf(stderr,"%s: Instance was not set up.\n", __func__);
   }
 
-  free(settings);
+  if(settings != NULL) {
+    free(settings);
+  }
   return passed;
 }
 
 CVPI_BOOL test_cvpi_egl_instance_openvg_pixmap(void) {
   cvpi_egl_settings settings = cvpi_egl_settings_create();
+
+  if(settings == NULL) {
+    return CVPI_FALSE;
+  }
 
   settings->surface_pixmap_create_function = cvpi_egl_surface_pixmap_native_creator;
   settings->surface_pixmap_destroy_function = cvpi_egl_surface_pixmap_native_destroyer;
@@ -74,7 +82,9 @@ CVPI_BOOL test_cvpi_egl_instance_openvg_pixmap(void) {
     CVPI_TRUE_TEST(cvpi_egl_settings_surface_type(settings, cvpi_egl_surface_bits_window, cvpi_egl_settings_remove));
 
   if(!good) {
-    free(settings);
+    if(settings != NULL) {
+      free(settings);
+    }
     return good;
   } else {
     cvpi_egl_instance instance = cvpi_egl_instance_setup(settings);
@@ -84,8 +94,9 @@ CVPI_BOOL test_cvpi_egl_instance_openvg_pixmap(void) {
     if(!passed) {
       fprintf(stderr,"%s: Instance was not set up.\n", __func__);
     }
-
-    free(settings);
+    if(settings != NULL) {
+      free(settings);
+    }
     return passed;
   }
 }

@@ -3,6 +3,7 @@
 lib_LTLIBRARIES = libcvpi.la
 
 libcvpi_la_SOURCES = \
+	cvpi_private_header.h \
 	cvpi_base.c \
 	cvpi_egl_config.c \
 	cvpi_image_functions.c \

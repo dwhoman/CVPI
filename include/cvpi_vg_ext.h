@@ -20,7 +20,7 @@ char* cvpi_vg_error_string(VGErrorCode error);
    values. vgConvolveNormal uses a short between -255 and 255 for the
    bias so that the user does not have to do the conversion from
    integer to float. */
-inline void vgConvolveNormal(VGImage dst, VGImage src,
+void vgConvolveNormal(VGImage dst, VGImage src,
 			     VGint kernelWidth, VGint kernelHeight,
 			     VGint shiftX, VGint shiftY,
 			     const VGshort * kernel,
@@ -28,7 +28,7 @@ inline void vgConvolveNormal(VGImage dst, VGImage src,
 			     VGfloat bias,
 			     VGTilingMode tilingMode);
 
-inline void vgSeparableConvolveNormal(VGImage dst, VGImage src,
+void vgSeparableConvolveNormal(VGImage dst, VGImage src,
 				      VGint kernelWidth, VGint kernelHeight,
 				      VGint shiftX, VGint shiftY,
 				      const VGshort * kernelX,
@@ -43,14 +43,14 @@ inline void vgSeparableConvolveNormal(VGImage dst, VGImage src,
      vgConvolveNoShift, vgSeparableConvolveNoShift,
      vgConvolveNormalNoShift and vgSeparableConvolveNormalNoShift do
      that shift automatically. */
-inline void vgConvolveNoShift(VGImage dst, VGImage src,
+void vgConvolveNoShift(VGImage dst, VGImage src,
 			      VGint kernelWidth, VGint kernelHeight,
 			      const VGshort * kernel,
 			      VGfloat scale,
 			      VGfloat bias,
 			      VGTilingMode tilingMode);
 
-inline void vgSeparableConvolveNoShift(VGImage dst, VGImage src,
+void vgSeparableConvolveNoShift(VGImage dst, VGImage src,
 				       VGint kernelWidth, VGint kernelHeight,
 				       const VGshort * kernelX,
 				       const VGshort * kernelY,
@@ -58,14 +58,14 @@ inline void vgSeparableConvolveNoShift(VGImage dst, VGImage src,
 				       VGfloat bias,
 				       VGTilingMode tilingMode);
   
-inline void vgConvolveNormalNoShift(VGImage dst, VGImage src,
+void vgConvolveNormalNoShift(VGImage dst, VGImage src,
 				    VGint kernelWidth, VGint kernelHeight,
 				    const VGshort * kernel,
 				    VGfloat scale,
 				    VGfloat bias,
 				    VGTilingMode tilingMode);
 
-  inline void vgSeparableConvolveNormalNoShift(VGImage dst, VGImage src,
+void vgSeparableConvolveNormalNoShift(VGImage dst, VGImage src,
 					       VGint kernelWidth, VGint kernelHeight,
 					       const VGshort * kernelX,
 					       const VGshort * kernelY,

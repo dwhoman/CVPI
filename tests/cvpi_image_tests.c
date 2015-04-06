@@ -26,10 +26,12 @@
 #include "cvpi_image_functions.h"
 #endif
 
+#ifndef CVPI_BASE
+#include "cvpi_base.h"
+#endif
+
 #define IMAGES_CORRECT_DIR "./test_images_correct/"
 #define IMAGES_TMP_DIR "./test_images_tmp/"
-
-#define PRINT_MALLOC_ERROR fprintf(cvpi_log_file, "%s:%d: Error malloc returned NULL: errno = %d\n", __func__, __LINE__, errno)
 
 #define heap_error_check(pointer)\
   do {\
@@ -49,6 +51,7 @@
   goto TAKEDOWN;\
   }} while(0)
 
+//    fprintf(cvpi_log_file, "%s:%d: vgError:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
 #define cvpi_vg_error_check()\
   do {\
   VGErrorCode error = vgGetError();\
@@ -74,7 +77,7 @@
   VGErrorCode error = vgGetError();\
   if(error != VG_NO_ERROR) {\
     cvpi_log_2("", __func__, __LINE__, cvpi_vg_error_string(error)); \
-    BADSTATE = 1;
+    BADSTATE = 1;\
   }\
   } while(0)
 
@@ -296,7 +299,7 @@ CVPI_BOOL test_cvpi_yuyv2yuva() {
 static CVPI_BOOL test_cvpi_image_add_common(int width, int height, 
 					     VGfloat * image1_color, VGfloat * image2_color, 
 					     VGshort a, VGshort b, VGfloat scale, VGfloat bias, 
-					     VGfloat * image_correct_color, char* file_name) {
+					     VGfloat * image_correct_color, char* file_path) {
 #define TAKEDOWN test_cvpi_image_add_common_takedown
 int BADSTATE = 0;
  VGImage image0 = VG_INVALID_HANDLE;
@@ -307,7 +310,6 @@ int BADSTATE = 0;
 
  void* added_data = NULL;
  void* correct_data = NULL;
- char* file_path = NULL;
  FILE* output = NULL;
  
  CVPI_BOOL return_value = CVPI_FALSE;
@@ -372,25 +374,7 @@ int BADSTATE = 0;
   } else {
     fprintf(cvpi_log_file, "%s: added_data is less than the correct data.\n", __func__);
   }
-  if(strlen(file_name) > 0) {  
-    int path_length = strlen(IMAGES_TMP_DIR) + strlen(file_name);
-    int size = sizeof(*file_name) * path_length;
-    if(size == 0) {
-      return_value = CVPI_FALSE;
-      BADSTATE = 1;
-      goto TAKEDOWN;
-    }
-    file_path = malloc(size);
-    heap_error_check(file_path);
-
-    int snprintf_ret;
-    if((snprintf_ret = snprintf(file_path,  size, "%s%s", IMAGES_TMP_DIR, file_name)) < 0) {
-      fprintf(cvpi_log_file, "%s:%d: snprintf returned: %d\n", __func__, __LINE__, errno);
-      return_value = CVPI_FALSE;
-      BADSTATE = 1;
-      goto TAKEDOWN;
-    }
-    
+  if(strlen(file_path) > 0) {      
     output = fopen(file_path, "w");
     heap_error_check(output);
 
@@ -422,7 +406,6 @@ int BADSTATE = 0;
   cvpi_vg_error_takedown();
   freeSafe(added_data);
   freeSafe(correct_data);
-  freeSafe(file_path);
 
   if(BADSTATE) {
     return_value = CVPI_FALSE;
@@ -460,7 +443,7 @@ CVPI_BOOL test_cvpi_image_add_odd(void) {
     3,3,3,3
   };
 
-  return test_cvpi_image_add_common(640, 3, image1_color, image2_color, 1, 1, 1, 0, image_correct_color, "test_cvpi_add_images_odd.yuv");
+  return test_cvpi_image_add_common(640, 3, image1_color, image2_color, 1, 1, 1, 0, image_correct_color, IMAGES_TMP_DIR "test_cvpi_add_images_odd.yuv");
 }
 
 CVPI_BOOL test_cvpi_image_add_single(void) {
@@ -491,7 +474,7 @@ CVPI_BOOL test_cvpi_image_add_single(void) {
     3,3,3,3
   };
 
-  return test_cvpi_image_add_common(640, 1, image1_color, image2_color, 1, 1, 1, 0, image_correct_color, "test_cvpi_add_images_single.yuv");
+  return test_cvpi_image_add_common(640, 1, image1_color, image2_color, 1, 1, 1, 0, image_correct_color, IMAGES_TMP_DIR "test_cvpi_add_images_single.yuv");
 }
 
 CVPI_BOOL test_cvpi_image_add_even(void) {
@@ -522,7 +505,7 @@ CVPI_BOOL test_cvpi_image_add_even(void) {
     3,3,3,3
   };
 
-  return test_cvpi_image_add_common(640, 2, image1_color, image2_color, 1, 1, 1, 0, image_correct_color, "test_cvpi_add_images_even.yuv");
+  return test_cvpi_image_add_common(640, 2, image1_color, image2_color, 1, 1, 1, 0, image_correct_color, IMAGES_TMP_DIR "test_cvpi_add_images_even.yuv");
 }
 
 CVPI_BOOL test_cvpi_subtract_images_odd(void) {
@@ -553,7 +536,7 @@ CVPI_BOOL test_cvpi_subtract_images_odd(void) {
     3,3,3,3
   };
 
-  return test_cvpi_image_add_common(640, 3, image1_color, image2_color, 1, -1, 1, 0, image_correct_color, "test_cvpi_subtract_images_odd.yuv");
+  return test_cvpi_image_add_common(640, 3, image1_color, image2_color, 1, -1, 1, 0, image_correct_color, IMAGES_TMP_DIR "test_cvpi_subtract_images_odd.yuv");
 }
 
 CVPI_BOOL test_cvpi_image_add_odd_scale_add(void) {
@@ -584,7 +567,8 @@ CVPI_BOOL test_cvpi_image_add_odd_scale_add(void) {
     3,3,3,3
   };
 
-  return test_cvpi_image_add_common(640, 3, image1_color, image2_color, 2, 1, 5, 2, image_correct_color, "test_cvpi_add_images_odd_scale_add.yuv");
+  return test_cvpi_image_add_common(640, 3, image1_color, image2_color, 2, 1, 5, 2, image_correct_color, 
+				    IMAGES_TMP_DIR "test_cvpi_add_images_odd_scale_add.yuv");
 }
 CVPI_BOOL test_cvpi_subtract_images_odd_scale_add(void) {
   VGfloat image2_color[20] = {
@@ -614,7 +598,8 @@ CVPI_BOOL test_cvpi_subtract_images_odd_scale_add(void) {
     3,3,3,3
   };
 
-  return test_cvpi_image_add_common(640, 3, image1_color, image2_color, 1, -2, 5, 2, image_correct_color, "test_cvpi_subtract_images_odd_scale_add.yuv");
+  return test_cvpi_image_add_common(640, 3, image1_color, image2_color, 1, -2, 5, 2, image_correct_color, 
+				    IMAGES_TMP_DIR "test_cvpi_subtract_images_odd_scale_add.yuv");
 }
 
 CVPI_BOOL test_cvpi_image_add_huge_even(void) {
@@ -645,7 +630,8 @@ CVPI_BOOL test_cvpi_image_add_huge_even(void) {
     3,3,3,3
   };
 
-  return test_cvpi_image_add_common(EGL_CONFIG_MAX_WIDTH, EGL_CONFIG_MAX_HEIGHT, image1_color, image2_color, 1, 1, 1, 0, image_correct_color, "test_cvpi_add_images_huge_even.yuv");
+  return test_cvpi_image_add_common(EGL_CONFIG_MAX_WIDTH, EGL_CONFIG_MAX_HEIGHT, image1_color, image2_color, 1, 1, 1, 0, 
+				    image_correct_color, IMAGES_TMP_DIR "test_cvpi_add_images_huge_even.yuv");
 }
 CVPI_BOOL test_cvpi_image_add_huge_odd(void) {
   VGfloat image1_color[20] = {
@@ -675,10 +661,11 @@ CVPI_BOOL test_cvpi_image_add_huge_odd(void) {
     3,3,3,3
   };
 
-  return test_cvpi_image_add_common(EGL_CONFIG_MAX_WIDTH-1, EGL_CONFIG_MAX_HEIGHT-1, image1_color, image2_color, 1, 1, 1, 0, image_correct_color, "test_cvpi_add_images_huge_odd.yuv");
+  return test_cvpi_image_add_common(EGL_CONFIG_MAX_WIDTH-1, EGL_CONFIG_MAX_HEIGHT-1, image1_color, image2_color, 1, 1, 1, 0, 
+				    image_correct_color, IMAGES_TMP_DIR "test_cvpi_add_images_huge_odd.yuv");
 }
 
-CVPI_BOOL test_cvpi_add_channels_RB(void) {
+CVPI_BOOL test_cvpi_channel_add_RB(void) {
 #define TAKEDOWN test_cvpi_add_channels_RB_takedown
   int BADSTATE = 0;
 
@@ -711,7 +698,7 @@ CVPI_BOOL test_cvpi_add_channels_RB(void) {
   void* added_data = NULL;
   void* correct_data = NULL;
   char* file_path = NULL;
-  FILE* output = NULL
+  FILE* output = NULL;
 
   CVPI_BOOL return_value = CVPI_FALSE;
   
@@ -729,12 +716,15 @@ CVPI_BOOL test_cvpi_add_channels_RB(void) {
   cvpi_vg_error_check();
   
   /* green and blue channels should contain 1's */
-  first_image = cvpi_channel_add(input_image, VG_RED, VG_BLUE, 1, 1, 1, 1, VG_GREEN | VG_ALPHA);
+  first_image = cvpi_channel_add(input_image, VG_RED, VG_BLUE, 1, 1, 1, 
+				 1, 1, 1, 1, 
+				 VG_GREEN | VG_ALPHA);
   cvpi_image_error_check(first_image);
 
   /* all channels should contain 10's */
-  second_image = cvpi_channel_add(first_image, VG_GREEN, VG_ALPHA, 2, 3, 2, 0, 
-					   VG_RED|VG_BLUE|VG_GREEN|VG_ALPHA);
+  second_image = cvpi_channel_add(first_image, VG_GREEN, VG_ALPHA, 2, 3, 2, 
+				  0, 0, 0, 0,
+				  VG_RED|VG_BLUE|VG_GREEN|VG_ALPHA);
   cvpi_image_error_check(second_image);
 
   VGint second_image_width = vgGetParameteri(second_image, VG_IMAGE_WIDTH);
@@ -743,7 +733,7 @@ CVPI_BOOL test_cvpi_add_channels_RB(void) {
   cvpi_vg_error_check();
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -892,16 +882,18 @@ CVPI_BOOL test_cvpi_channel_add_RR(void) {
   cvpi_vg_error_check();
   
   /* green and blue channels should contain 1's */
-  first_image = cvpi_channel_add(input_image, VG_RED, VG_RED, 1, 1, 1, 1, VG_RED);
+  first_image = cvpi_channel_add(input_image, VG_RED, VG_RED, 1, 1, 1, 
+				 1, 1, 1, 1, VG_RED);
   cvpi_image_error_check(first_image);
 
   /* all channels should contain 10's */
-  second_image = cvpi_channel_add(first_image, VG_RED, VG_RED, 2, 3, 2, 0, 
+  second_image = cvpi_channel_add(first_image, VG_RED, VG_RED, 2, 3, 2, 
+				  0, 0, 0, 0,
 				  VG_RED|VG_BLUE|VG_GREEN|VG_ALPHA);
   cvpi_image_error_check(second_image);
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1033,6 +1025,7 @@ CVPI_BOOL test_cvpi_color_channels_add(void) {
   void* added_data = NULL;
   void* correct_data = NULL;
   FILE* output = NULL;
+  char* file_path = NULL;
   
   dummy = vgCreateImage(CVPI_COLOR_SPACE, width, height,VG_IMAGE_QUALITY_NONANTIALIASED);
   cvpi_vg_error_check();
@@ -1049,16 +1042,20 @@ CVPI_BOOL test_cvpi_color_channels_add(void) {
   cvpi_vg_error_check();
   
   /* all channels should contain 1's */
-  first_image = cvpi_color_channels_add(input_image, 3, 2, 1, 1, VG_RED|VG_BLUE|VG_GREEN|VG_ALPHA);
+  first_image = cvpi_color_channels_add(input_image, 3, 2, 1, 
+					1, 1, 1,
+					VG_RED|VG_BLUE|VG_GREEN|VG_ALPHA);
   cvpi_image_error_check(first_image);
 
   /* green and blue channels should contain 7's and red and blue contain 1's */
-  second_image = cvpi_color_channels_add(first_image, 2, 3, 2, 0, VG_GREEN | VG_ALPHA);
+  second_image = cvpi_color_channels_add(first_image, 2, 3, 2, 
+					 0, 0, 0,
+					 VG_GREEN | VG_ALPHA);
   cvpi_image_error_check(second_image);
 
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1103,7 +1100,7 @@ CVPI_BOOL test_cvpi_color_channels_add(void) {
 
   int path_length = strlen(IMAGES_TMP_DIR) + strlen(file_name);
   if(path_length > 0) {
-    char* file_path = malloc(sizeof(*file_path) * path_length);
+    file_path = malloc(sizeof(*file_path) * path_length);
     heap_error_check(file_path);
     
     int file_path_print = sprintf(file_path, "%s%s", IMAGES_TMP_DIR, file_name);
@@ -1189,7 +1186,6 @@ CVPI_BOOL test_cvpi_all_channels_add(void) {
   VGImage second_image = VG_INVALID_HANDLE;
   void* added_data = NULL;
   void* correct_data = NULL;
-  char* file_path = NULL;
   FILE* output = NULL;
   
   dummy = vgCreateImage(CVPI_COLOR_SPACE, width, height,VG_IMAGE_QUALITY_NONANTIALIASED);
@@ -1207,16 +1203,22 @@ CVPI_BOOL test_cvpi_all_channels_add(void) {
   cvpi_vg_error_check();
   
   /* all channels should contain 1's */
-  first_image = cvpi_all_channels_add(input_image, 3, 2, 1, 1, 1, VG_RED|VG_BLUE|VG_GREEN|VG_ALPHA);
+  first_image = cvpi_all_channels_add(input_image, 
+				      3, 2, 1, 1, 
+				      1, 1, 1, 1,
+				      VG_RED|VG_BLUE|VG_GREEN|VG_ALPHA);
   cvpi_image_error_check(first_image);
 
   /* green and blue channels should contain 8's and red and blue contain 1's */
-  second_image = cvpi_all_channels_add(first_image, 2, 3, 2, 1, 0, VG_GREEN | VG_ALPHA);
+  second_image = cvpi_all_channels_add(first_image, 
+				       2, 3, 2, 1, 
+				       0, 0, 0, 0,
+				       VG_GREEN | VG_ALPHA);
   cvpi_image_error_check(second_image);
 
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1256,19 +1258,9 @@ CVPI_BOOL test_cvpi_all_channels_add(void) {
     fprintf(stderr, "%s: added_data is less than the correct data.\n", __func__);
   }
 
-  const char* file_name = __func__;
-  int path_length = strlen(IMAGES_TMP_DIR) + strlen(file_name);
+  const char* file_path = IMAGES_TMP_DIR "test_cvpi_all_channels_add";
+  int path_length = strlen(file_path);
   if(path_length > 0) {
-    file_path = malloc(sizeof(*file_path) * path_length);
-    heap_error_check(file_path);
-
-    int file_path_print = sprintf(file_path, "%s%s", IMAGES_TMP_DIR, file_name);
-    if(file_path_print < 0) {
-      fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
-      return_value = CVPI_FALSE;
-      BADSTATE = 1;
-      goto TAKEDOWN;
-    }
 
     output = fopen(file_path, "w");
     heap_error_check(output);
@@ -1290,11 +1282,6 @@ CVPI_BOOL test_cvpi_all_channels_add(void) {
   }
 
   TAKEDOWN:
-  fcloseSafeTakedown(output);
-  freeSafe(file_path);
-  freeSafe(added_data);
-  freeSafe(correct_data);
-
   vgDestroyImageSafe(dummy);
   cvpi_vg_error_takedown();
   vgDestroyImageSafe(input_image);
@@ -1307,6 +1294,15 @@ CVPI_BOOL test_cvpi_all_channels_add(void) {
   cvpi_vg_error_takedown();
   vgFlush();
   cvpi_vg_error_check();
+
+  freeSafe(added_data);
+  freeSafe(correct_data);  
+  //freeSafe(file_path);
+  /* SEGFAULT */
+/* Program received signal SIGSEGV, Segmentation fault. */
+/* malloc_consolidate (av=0xb6eef250) at malloc.c:5190 */
+/* 5190	malloc.c: No such file or directory. */
+  fcloseSafeTakedown(output);
 
   if(BADSTATE) {
     return_value = CVPI_FALSE;
@@ -1384,7 +1380,7 @@ CVPI_BOOL test_cvpi_image_combine_channelwise(void) {
   
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
 
     return_value = CVPI_FALSE;
     BADSTATE = 1;
@@ -1503,7 +1499,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
 
   size_t path_size = sizeof(*input_file_name) * (strlen(IMAGES_CORRECT_DIR) + strlen(input_file_name));
   if(path_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1528,7 +1524,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
   seek_error_check(fseek(input_file, 0L, SEEK_SET));
 
   if(input_file_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1546,7 +1542,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
 
   size_t output_path_size = sizeof(*output_file_name) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
   if(output_path_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1574,7 +1570,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
   cvpi_vg_error_check();
   size_t output_size = width*height*CVPI_PIXEL_BYTES;
   if(output_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1678,7 +1674,7 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
 
   size_t input_path_size = sizeof(*input_file_name) * (strlen(IMAGES_CORRECT_DIR) + strlen(input_file_name));
   if(input_path_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1706,7 +1702,7 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
   seek_error_check(fseek(input_file, 0L, SEEK_SET));
 
   if(input_file_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -1720,7 +1716,7 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
   }
   size_t output_path_size = sizeof(*output_file_name) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
   if(output_path_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -1759,7 +1755,8 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
 
   output_file = fopen(output_path, "w");
   heap_error_check(output_file);
-  size_t written = fwrite(thresholded_data, width*height*CVPI_PIXEL_BYTES, 1, output_file);
+  size_t output_size = width*height*CVPI_PIXEL_BYTES;
+  size_t written = fwrite(thresholded_data, output_size, 1, output_file);
   int flushed = fflush(output_file);
 
   if(written != output_size || flushed != 0) {
@@ -1914,7 +1911,7 @@ static CVPI_BOOL test_cvpi_image_threshold_sector_common(const char* input_file_
 
   unsigned long fwrite_size = width*height*CVPI_PIXEL_BYTES;
   if(fwrite_size <= 0) {
-    fprnitf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -1931,10 +1928,10 @@ static CVPI_BOOL test_cvpi_image_threshold_sector_common(const char* input_file_
   size_t written = fwrite(thresholded_data, fwrite_size, 1, output_file);
   int flushed = fflush(output_file);
 
-  if(written != output_size || flushed != 0) {
-    if(written != output_size) {
+  if(written != fwrite_size || flushed != 0) {
+    if(written != fwrite_size) {
       fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
-	      __func__, output_size, written);
+	      __func__, fwrite_size, written);
     } else {
       fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
@@ -2153,7 +2150,8 @@ CVPI_BOOL test_cvpi_image_rgba_to_binary(void) {
   
   cvpi_pbm_header_write(output_file, width, height);
 
-  size_t written = fwrite(bw_data, width*height/8, 1, output_file);
+  size_t fwrite_size = width*height/8;
+  size_t written = fwrite(bw_data, fwrite_size, 1, output_file);
   int flushed = fflush(output_file);
 
   if(written != fwrite_size || flushed != 0) {
@@ -2169,8 +2167,6 @@ CVPI_BOOL test_cvpi_image_rgba_to_binary(void) {
   TAKEDOWN:
   
   freeSafe(bw_data);
-  freeSafe(input_path);
-  freeSafe(output_path);
   freeSafe(input_data);
   fcloseSafeTakedown(input_file);  
   fcloseSafeTakedown(output_file);
@@ -2732,15 +2728,15 @@ static CVPI_BOOL test_cvpi_image_morphology_common(uint32_t data, VGImage (*morp
 #undef TAKEDOWN
 }
 
-/* cvpi_image_dialate */
-CVPI_BOOL test_cvpi_image_dialate(void) {
+/* cvpi_image_dilate */
+CVPI_BOOL test_cvpi_image_dilate(void) {
   VGImage (*morph)(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
-  morph = cvpi_image_dialate;
+  morph = cvpi_image_dilate;
   return test_cvpi_image_morphology_common(test_cvpi_image_morphology_image_1, morph, 255, 0, CVPI_TRUE);
 }
-CVPI_BOOL test_cvpi_image_dialate_NOT(void) {
+CVPI_BOOL test_cvpi_image_dilate_NOT(void) {
   VGImage (*morph)(VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
-  morph = cvpi_image_dialate;
+  morph = cvpi_image_dilate;
   return test_cvpi_image_morphology_common(test_cvpi_image_morphology_image_2, morph, 0, 255, CVPI_FALSE);
 }
 /* cvpi_image_erode */
@@ -2851,13 +2847,13 @@ static CVPI_BOOL test_cvpi_channel_max_min_common(enum test_cvpi_channel_max_min
       BADSTATE = 1;
       goto TAKEDOWN;
     } else {
-      max = max_min[0];
-      min = max_min[1];
+      max = max_min.max_min[0];
+      min = max_min.max_min[1];
     }
   }
   vgFinish();
 
-  CVPI_BOOL return_value_max, return_value_min, return_value;
+  CVPI_BOOL return_value_max, return_value_min;
 
   switch(channel) {
   case VG_RED:
@@ -3444,7 +3440,7 @@ CVPI_BOOL test_cvpi_image_coordinate_table_zero(void) {
   vgImageSubData(image, data, CVPI_PIXEL_BYTES * width, CVPI_COLOR_SPACE, 0, 0, width, height);  
   cvpi_vg_error_check();
   
-  table = cvpi_image_coordinate_table(image,VG_RED|VG_GREEN|VG_BLUE|VG_ALPHA);
+  table = cvpi_image_coordinate_table(image,VG_RED|VG_GREEN|VG_BLUE|VG_ALPHA, CVPI_FALSE);
   heap_error_check(table);
 
   if(table->length == 0) {
@@ -3490,7 +3486,7 @@ CVPI_BOOL test_cvpi_image_coordinate_table_some(void) {
   vgImageSubData(image, data, CVPI_PIXEL_BYTES * width, CVPI_COLOR_SPACE, 0, 0, width, height);  
   cvpi_vg_error_check();
   
-  table = cvpi_image_coordinate_table(image,VG_RED|VG_GREEN|VG_BLUE);
+  table = cvpi_image_coordinate_table(image,VG_RED|VG_GREEN|VG_BLUE, CVPI_FALSE);
   heap_error_check(table);
 
   if(table->length == 2 && 
@@ -3542,7 +3538,7 @@ CVPI_BOOL test_cvpi_image_coordinate_table_all(void) {
   vgImageSubData(image, data, CVPI_PIXEL_BYTES * width, CVPI_COLOR_SPACE, 0, 0, width, height);  
   cvpi_vg_error_check();
   
-  table = cvpi_image_coordinate_table(image,VG_RED|VG_GREEN|VG_BLUE|VG_ALPHA);
+  table = cvpi_image_coordinate_table(image,VG_RED|VG_GREEN|VG_BLUE|VG_ALPHA, CVPI_FALSE);
   heap_error_check(table);
   
   if(table->length == 4 &&
@@ -3638,14 +3634,14 @@ CVPI_BOOL test_filter_common(const VGshort* filter_x, const VGshort* filter_y, i
   vgFinish();
   cvpi_vg_error_check();
   
-  cvpi_bmp_header_write(output_file, width, height, 100, cvpi_bmp_sARGB_8888);
+  cvpi_bmp_header_alloc_write(output_file, width, height, 100, cvpi_bmp_sARGB_8888);
   size_t written = fwrite(data, 1, input_size, output_file);
   int flushed = fflush(output_file);
 
-  if(written != fwrite_size || flushed != 0) {
-    if(written != fwrite_size) {
+  if(written != input_size || flushed != 0) {
+    if(written != input_size) {
       fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
-	      __func__, fwrite_size, written);
+	      __func__, input_size, written);
     } else {
       fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
@@ -3771,28 +3767,28 @@ CVPI_BOOL test_cvpi_invert_colors(void) {
     fprintf(stderr, "%s: added_data is less than the correct data.\n", __func__);
   }
 
-  cvpi_bmp_header_write(output_file, width, height, 100, cvpi_bmp_sARGB_8888);
+  cvpi_bmp_header_alloc_write(output_file, width, height, 100, cvpi_bmp_sARGB_8888);
   size_t written = fwrite(data, 1, input_size, output_file);
   int flushed = fflush(output_file);
 
-  if(written != fwrite_size || flushed != 0) {
-    if(written != fwrite_size) {
+  if(written != input_size || flushed != 0) {
+    if(written != input_size) {
       fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
-	      __func__, fwrite_size, written);
+	      __func__, input_size, written);
     } else {
       fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
 
-  cvpi_bmp_header_write(output_file_lt, width, height, 100, cvpi_bmp_sARGB_8888);
+  cvpi_bmp_header_alloc_write(output_file_lt, width, height, 100, cvpi_bmp_sARGB_8888);
   written = fwrite(data2, 1, input_size, output_file_lt);
   flushed = fflush(output_file_lt);
 
-  if(written != fwrite_size || flushed != 0) {
-    if(written != fwrite_size) {
+  if(written != input_size || flushed != 0) {
+    if(written != input_size) {
       fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
-	      __func__, fwrite_size, written);
+	      __func__, input_size, written);
     } else {
       fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
@@ -3882,7 +3878,7 @@ CVPI_BOOL test_cvpi_pixel_average(void) {
   
   if(BADSTATE) {
     return_value = CVPI_FALSE;
-  }n
+  }
   return return_value;
 #undef TAKEDOWN
 }
@@ -4007,8 +4003,9 @@ CVPI_BOOL test_cvpi_avuy2ayuv(void) {
   /* output color should be 0xRRGGBB = 0x004696 */
   char* output_image_path = IMAGES_TMP_DIR "test_cvpi_avuy2ayuv.bmp";
   output_file = fopen(output_image_path, "w");
-  cvpi_bmp_header_write(output_file, width, height, 100, cvpi_bmp_sARGB_8888);
-  size_t written = fwrite(test_output, 1, CVPI_PIXEL_BYTES * width * height, output_file);
+  cvpi_bmp_header_alloc_write(output_file, width, height, 100, cvpi_bmp_sARGB_8888);
+  size_t fwrite_size = CVPI_PIXEL_BYTES * width * height;
+  size_t written = fwrite(test_output, 1, fwrite_size, output_file);
   int flushed = fflush(output_file);
 
   if(written != fwrite_size || flushed != 0) {
@@ -4086,13 +4083,13 @@ CVPI_BOOL test_cvpi_avuy2argb(void) {
     goto TAKEDOWN;
   }
 
-  cvpi_bmp_header_write(output_file, width, height, 100, cvpi_bmp_sARGB_8888);
+  cvpi_bmp_header_alloc_write(output_file, width, height, 100, cvpi_bmp_sARGB_8888);
   size_t written = fwrite(output_data, 1, input_size, output_file);
   int flushed = fflush(output_file);
-  if(written != fwrite_size || flushed != 0) {
-    if(written != fwrite_size) {
+  if(written != input_size || flushed != 0) {
+    if(written != input_size) {
       fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
-	      __func__, fwrite_size, written);
+	      __func__, input_size, written);
     } else {
       fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
@@ -4111,8 +4108,8 @@ CVPI_BOOL test_cvpi_avuy2argb(void) {
 #undef TAKEDOWN
 }
 
-CVPI_BOOL test_cvpi_image2rgba(void) {
-#define TAKEDOWN test_cvpi_image2rgba_takedown
+CVPI_BOOL test_cvpi_image2argb(void) {
+#define TAKEDOWN test_cvpi_image2argb_takedown
   int BADSTATE = 0;
 
   CVPI_BOOL return_value = CVPI_TRUE;
@@ -4127,7 +4124,7 @@ CVPI_BOOL test_cvpi_image2rgba(void) {
   VGImage input_image = VG_INVALID_HANDLE;
 
   char* input_image_path = IMAGES_CORRECT_DIR "mark1_black_yuva.yuv";  
-  char* output_image_path = IMAGES_TMP_DIR "mark1_black_rgba.bmp";
+  char* output_image_path = IMAGES_TMP_DIR "mark1_black_argb.bmp";
   const int width = 1280;
   const int height = 960;
 
@@ -4157,16 +4154,16 @@ CVPI_BOOL test_cvpi_image2rgba(void) {
   vgFinish();
   cvpi_vg_error_check();
 
-  image_out = cvpi_image2rgba(input_image);
+  image_out = cvpi_image2argb(input_image);
   heap_error_check(image_out);
 
-  cvpi_bmp_header_write(output, width, height, 100, cvpi_bmp_sARGB_8888);
+  cvpi_bmp_header_alloc_write(output, width, height, 100, cvpi_bmp_sARGB_8888);
   size_t written = fwrite(image_out, 1, input_size, output);
   int flushed = fflush(output);
-  if(written != fwrite_size || flushed != 0) {
-    if(written != fwrite_size) {
+  if(written != input_size || flushed != 0) {
+    if(written != input_size) {
       fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
-	      __func__, fwrite_size, written);
+	      __func__, input_size, written);
     } else {
       fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
@@ -4216,7 +4213,7 @@ CVPI_BOOL test_overflow_behavior(void) {
     10,10,10,10
   };
 
-  return test_cvpi_image_add_common(1, 1, image1_color, image2_color, 1, 1, 1, 0, image_correct, "overflow.yuv");
+  return test_cvpi_image_add_common(1, 1, image1_color, image2_color, 1, 1, 1, 0, image_correct, IMAGES_TMP_DIR "overflow.yuv");
 }
 
 CVPI_BOOL test_negative_behavior(void) {
@@ -4247,5 +4244,126 @@ CVPI_BOOL test_negative_behavior(void) {
     2,2,2,2
   };
 
-  return test_cvpi_image_add_common(1, 1, image1_color, image2_color, 1, -1, 1, 0, image_correct, "negative.yuv");
+  return test_cvpi_image_add_common(1, 1, image1_color, image2_color, 1, -1, 1, 0, image_correct, IMAGES_TMP_DIR "negative.yuv");
+}
+
+CVPI_BOOL test_vgConvolveNoShift(void) {
+#define TAKEDOWN test_vgConvolveNoShift_takedown
+  int BADSTATE = 0;
+
+  VGImage dst = VG_INVALID_HANDLE;
+  VGImage src = VG_INVALID_HANDLE;
+  void* test_data = NULL;
+  void* convolved_data = NULL;
+  FILE* test_file = NULL;
+  VGint kernelWidth = 3;
+  VGint kernelHeight = 3;
+
+  CVPI_BOOL return_value = CVPI_TRUE;
+
+  /* const VGshort kernel[25] = {0, 0, 0, 0, 0, */
+  /* 			      0, 0, 0, 0, 0, */
+  /* 			      0, 0, 1, 0, 0, */
+  /* 			      0, 0, 0, 0, 0, */
+  /* 			      0, 0, 0, 0, 0}; */
+
+  const VGshort kernel[9] = {0, 0, 0,
+			     0, 1, 0,
+                             0, 0, 0};
+  VGfloat scale = 1;
+  VGfloat bias = 0;
+  VGTilingMode tilingMode = VG_TILE_FILL;
+
+  char* test_image_file_path = IMAGES_CORRECT_DIR "mark1_black_yuva.yuv";
+  const int WIDTH = 1280;
+  const int HEIGHT = 960;
+
+  test_file = fopen(test_image_file_path, "r");
+  heap_error_check(test_file);
+
+  seek_error_check(fseek(test_file, 0L, SEEK_END));
+  int data_size = ftell(test_file);		/* correct file size */
+  seek_error_check(data_size);
+  seek_error_check(fseek(test_file, 0L, SEEK_SET));
+
+  test_data = malloc(data_size);
+  heap_error_check(test_data);
+
+  convolved_data = malloc(data_size);
+  heap_error_check(convolved_data);
+
+  if(data_size != fread(test_data, 1, data_size, test_file)) {
+    fprintf(cvpi_log_file, "%s: Reading the image from memory failed.\n",__func__);
+    BADSTATE = 1;
+    goto TAKEDOWN;
+  }
+
+  dst = vgCreateImage(CVPI_COLOR_SPACE, WIDTH, HEIGHT,VG_IMAGE_QUALITY_NONANTIALIASED);
+  cvpi_vg_error_check();
+
+  src = vgCreateImage(CVPI_COLOR_SPACE, WIDTH, HEIGHT,VG_IMAGE_QUALITY_NONANTIALIASED);
+  cvpi_vg_error_check();
+
+  vgImageSubData(src, test_data, WIDTH*CVPI_PIXEL_BYTES,
+		 CVPI_COLOR_SPACE, 0, 0, WIDTH, HEIGHT);
+  cvpi_vg_error_check();
+
+  /* vgConvolveNoShift(dst, src, */
+  /* 		    kernelWidth, kernelHeight, */
+  /* 		    kernel, */
+  /* 		    scale, */
+  /* 		    bias, */
+  /* 		    tilingMode); */
+  vgConvolve(dst, src,
+  	     kernelWidth, kernelHeight, 0, 0,
+  	     kernel,
+  	     scale,
+  	     bias,
+  	     tilingMode);
+  cvpi_vg_error_check();
+
+  vgFinish();
+  cvpi_vg_error_check();
+
+  vgGetImageSubData(dst, convolved_data, WIDTH*CVPI_PIXEL_BYTES,
+		    CVPI_COLOR_SPACE, 0, 0, WIDTH, HEIGHT);
+  cvpi_vg_error_check();
+
+  vgFinish();
+  cvpi_vg_error_check();
+
+  if(memcmp(convolved_data, test_data, data_size)) {
+    return_value = CVPI_FALSE;
+  }
+ TAKEDOWN:
+
+  vgDestroyImageSafe(dst);
+  cvpi_vg_error_takedown();
+
+  vgDestroyImageSafe(src);
+  cvpi_vg_error_takedown();
+
+  freeSafe(test_data);
+  freeSafe(convolved_data);
+  fcloseSafeTakedown(test_file);
+
+  if(BADSTATE == 1) {
+    return_value = CVPI_FALSE;
+  }
+
+  return return_value;
+}
+
+CVPI_BOOL test_cvpi_bmp_header_alloc_write(void) {
+  FILE* header_file = fopen(IMAGES_TMP_DIR "bmp_header.bmp", "w");
+  if(header_file == NULL) {
+    fprintf(stderr, "unable to open file\n");
+    return CVPI_FALSE;
+  }
+
+  CVPI_BOOL return_value = cvpi_bmp_header_alloc_write(header_file, 1, 2, 3, CVPI_BMP_DEFAULT);
+
+  fcloseSafeTakedown(header_file);
+
+  return return_value;
 }

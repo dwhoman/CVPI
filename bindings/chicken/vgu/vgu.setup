@@ -1,0 +1,6 @@
+(compile -s -O1 -d2 -J vgu.scd)
+(compile -library vgu.scd)
+(compile -library vgu.import.scm)
+(install-extension 'vgu
+		   '("vgu.so" "vgu.import.so")
+		   '((version "0.0.1")))

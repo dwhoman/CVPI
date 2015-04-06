@@ -19,6 +19,10 @@
 #include "cvpi_base.h"
 #endif
 
+#ifndef CVPI_PRIVATE_HEADER
+#include "cvpi_private_header.h"
+#endif
+
 #define WORD cvpi_word
 #define DWORD cvpi_dword
 #define LONG cvpi_long
@@ -121,7 +125,7 @@ struct cvpi_bitmap_header {
   DWORD        bV4GammaRed;
   DWORD        bV4GammaGreen;
   DWORD        bV4GammaBlue;     
-} __attribute__ ((__packed__, aligned(4)));
+};
 
 /* from http://msdn.microsoft.com/en-us/library/cc250396.aspx */
 
@@ -147,12 +151,16 @@ typedef struct {
 } pixel_format_s;
 
 
-void cvpi_bmp_header_write(FILE *write_ptr,
-			   cvpi_long width, 
-			   cvpi_long height, 
-			   cvpi_dword ppm, 
-			   enum cvpi_bmp_pixel_format pixel_f) {
+typedef struct cvpi_bitmap_header* cvpi_bitmap_header;
+
+CVPI_BMP cvpi_bmp_header_alloc(cvpi_long width, 
+			       cvpi_long height,
+			       cvpi_dword ppm, 
+			       enum cvpi_bmp_pixel_format pixel_f) {
   pixel_format_s pf;
+
+  cvpi_bitmap_header bmph = NULL;
+
   switch(pixel_f) {
   case cvpi_bmp_sRGBA_8888:
     pf.bytes = 4;
@@ -247,85 +255,183 @@ void cvpi_bmp_header_write(FILE *write_ptr,
     break;
   }
 
-  struct cvpi_bitmap_header bmph;
+  bmph = malloc(sizeof(*bmph));
+  if(bmph == NULL) {
+    cvpi_log_3("malloc returned NULL: errno = ", __FILE__, __LINE__, errno);
+    return NULL;
+  }
 
-  DWORD offset = sizeof(bmph);
-  bmph.bfOffBits = offset;
-  bmph.bV4BitCount = pf.bytes*8; /* bits per pixel */
+  DWORD offset = 122;		/* BMPv4 is 122 bytes long */
+  bmph->bfOffBits = offset;
+  bmph->bV4BitCount = pf.bytes*8; /* bits per pixel */
   /* equation from http://en.wikipedia.org/wiki/BMP_file_format */
-  bmph.bV4SizeImage = floor((bmph.bV4BitCount * abs(width) + 31)/32)*4 * abs(height);
+  bmph->bV4SizeImage = floor((bmph->bV4BitCount * abs(width) + 31)/32)*4 * abs(height);
   /* but this should be faster and return the same value */
-  //bmph.bV4SizeImage = (width*pf->bytes + pf->padding) * height;
-  bmph.bfSize = offset + bmph.bV4SizeImage;
-  bmph.bfType = 0x4d42;	/* bitmap magic number */
-  bmph.bfReserved1 = 0;
-  bmph.bfReserved2 = 0;
+  //bmph->bV4SizeImage = (width*pf->bytes + pf->padding) * height;
+  bmph->bfSize = offset + bmph->bV4SizeImage;
+  bmph->bfType = 0x4d42;	/* bitmap magic number */
+  bmph->bfReserved1 = 0;
+  bmph->bfReserved2 = 0;
   /* size of the total bitmap header - size of the BITMAPFILEHEADER; size of the BITMAPV4HEADER */
   /* will have to be modified if a color table or padding is used */
-  bmph.bV4Size = offset - 3*sizeof(WORD) - 2*sizeof(DWORD);
-  bmph.bV4Width = width;
-  bmph.bV4Height = height;
-  bmph.bV4Planes = 1;
-  bmph.bV4Compression = 0; /* no compression */
-  bmph.bV4XPelsPerMeter = ppm; /* print resolution; assume little endian */
-  bmph.bV4YPelsPerMeter = ppm;
-  bmph.bV4ClrUsed = 0; /* no colors in pallet */
-  bmph.bV4ClrImportant = 0; /* all colors are used */
-  bmph.bV4RedMask = pf.bV4RedMask;
-  bmph.bV4GreenMask = pf.bV4GreenMask;
-  bmph.bV4BlueMask = pf.bV4BlueMask;
-  bmph.bV4AlphaMask = pf.bV4AlphaMask;
-  bmph.bV4CSType = pf.bV4CSType;
-  bmph.bV4Endpoints_0 = 0; 	
-  bmph.bV4Endpoints_1 = 0; 
-  bmph.bV4Endpoints_2 = 0; 
-  bmph.bV4Endpoints_3 = 0; 
-  bmph.bV4Endpoints_4 = 0; 
-  bmph.bV4Endpoints_5 = 0; 
-  bmph.bV4Endpoints_6 = 0; 
-  bmph.bV4Endpoints_7 = 0; 
-  bmph.bV4Endpoints_8 = 0; 
-  bmph.bV4Endpoints_9 = 0; 
-  bmph.bV4Endpoints_10 = 0;
-  bmph.bV4Endpoints_11 = 0;
-  bmph.bV4Endpoints_12 = 0;
-  bmph.bV4Endpoints_13 = 0;
-  bmph.bV4Endpoints_14 = 0;
-  bmph.bV4Endpoints_15 = 0;
-  bmph.bV4Endpoints_16 = 0;
-  bmph.bV4Endpoints_17 = 0;
-  bmph.bV4Endpoints_18 = 0;
-  bmph.bV4Endpoints_19 = 0;
-  bmph.bV4Endpoints_20 = 0;
-  bmph.bV4Endpoints_21 = 0;
-  bmph.bV4Endpoints_22 = 0;
-  bmph.bV4Endpoints_23 = 0;
-  bmph.bV4Endpoints_24 = 0;
-  bmph.bV4Endpoints_25 = 0;
-  bmph.bV4Endpoints_26 = 0;
-  bmph.bV4Endpoints_27 = 0;
-  bmph.bV4Endpoints_28 = 0;
-  bmph.bV4Endpoints_29 = 0;
-  bmph.bV4Endpoints_30 = 0;
-  bmph.bV4Endpoints_31 = 0;
-  bmph.bV4Endpoints_32 = 0;
-  bmph.bV4Endpoints_33 = 0;
-  bmph.bV4Endpoints_34 = 0;
-  bmph.bV4Endpoints_35 = 0;
-  bmph.bV4GammaRed = pf.bV4GammaRed;
-  bmph.bV4GammaGreen = pf.bV4GammaGreen;
-  bmph.bV4GammaBlue = pf.bV4GammaBlue;
+  bmph->bV4Size = offset - 3*sizeof(WORD) - 2*sizeof(DWORD);
+  bmph->bV4Width = width;
+  bmph->bV4Height = height;
+  bmph->bV4Planes = 1;
+  bmph->bV4Compression = 0; /* no compression */
+  bmph->bV4XPelsPerMeter = ppm; /* print resolution; assume little endian */
+  bmph->bV4YPelsPerMeter = ppm;
+  bmph->bV4ClrUsed = 0; /* no colors in pallet */
+  bmph->bV4ClrImportant = 0; /* all colors are used */
+  bmph->bV4RedMask = pf.bV4RedMask;
+  bmph->bV4GreenMask = pf.bV4GreenMask;
+  bmph->bV4BlueMask = pf.bV4BlueMask;
+  bmph->bV4AlphaMask = pf.bV4AlphaMask;
+  bmph->bV4CSType = pf.bV4CSType;
+  bmph->bV4Endpoints_0 = 0; 	
+  bmph->bV4Endpoints_1 = 0; 
+  bmph->bV4Endpoints_2 = 0; 
+  bmph->bV4Endpoints_3 = 0; 
+  bmph->bV4Endpoints_4 = 0; 
+  bmph->bV4Endpoints_5 = 0; 
+  bmph->bV4Endpoints_6 = 0; 
+  bmph->bV4Endpoints_7 = 0; 
+  bmph->bV4Endpoints_8 = 0; 
+  bmph->bV4Endpoints_9 = 0; 
+  bmph->bV4Endpoints_10 = 0;
+  bmph->bV4Endpoints_11 = 0;
+  bmph->bV4Endpoints_12 = 0;
+  bmph->bV4Endpoints_13 = 0;
+  bmph->bV4Endpoints_14 = 0;
+  bmph->bV4Endpoints_15 = 0;
+  bmph->bV4Endpoints_16 = 0;
+  bmph->bV4Endpoints_17 = 0;
+  bmph->bV4Endpoints_18 = 0;
+  bmph->bV4Endpoints_19 = 0;
+  bmph->bV4Endpoints_20 = 0;
+  bmph->bV4Endpoints_21 = 0;
+  bmph->bV4Endpoints_22 = 0;
+  bmph->bV4Endpoints_23 = 0;
+  bmph->bV4Endpoints_24 = 0;
+  bmph->bV4Endpoints_25 = 0;
+  bmph->bV4Endpoints_26 = 0;
+  bmph->bV4Endpoints_27 = 0;
+  bmph->bV4Endpoints_28 = 0;
+  bmph->bV4Endpoints_29 = 0;
+  bmph->bV4Endpoints_30 = 0;
+  bmph->bV4Endpoints_31 = 0;
+  bmph->bV4Endpoints_32 = 0;
+  bmph->bV4Endpoints_33 = 0;
+  bmph->bV4Endpoints_34 = 0;
+  bmph->bV4Endpoints_35 = 0;
+  bmph->bV4GammaRed = pf.bV4GammaRed;
+  bmph->bV4GammaGreen = pf.bV4GammaGreen;
+  bmph->bV4GammaBlue = pf.bV4GammaBlue;
 
-  size_t written = fwrite(&bmph, sizeof(bmph), 1, write_ptr);
-  int flushed = fflush(write_ptr);
-  if(written != sizeof(bmph) || flushed != 0) {
-    if(written != sizeof(bmph)) {
-      cvpi_log_4("%s:%d: Error writing bmp header: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
-	       __func__, __LINE__, sizeof(bmph), written);
-    } else {
-      cvpi_log_4("%s:%d: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
-	       __func__, __LINE__, errno, flushed);
-    }
+  return (CVPI_BMP)bmph;
+}
+
+#define write_member(member)\
+  do {\
+    size_t member_size = sizeof(member);			\
+    size_t written = fwrite(&(member), 1, member_size, write_ptr);	\
+    int flushed = fflush(write_ptr);				\
+    if(written != member_size || flushed != 0) {		\
+      if(written != member_size) {					\
+	cvpi_log_4("Error writing bmp header: fwrite size discrepancy:", \
+		   __func__, __LINE__, member_size, written);		\
+      } else {								\
+	cvpi_log_4("Error writing bmp header: fflush errno = ",		\
+		   __func__, __LINE__, errno, flushed);			\
+      }									\
+      return CVPI_FALSE;						\
+    }									\
+  } while(0)
+
+CVPI_BOOL cvpi_bmp_header_write(FILE *write_ptr, CVPI_BMP h) {
+  cvpi_bitmap_header header = (cvpi_bitmap_header)h;
+
+  if(header == NULL || write_ptr == NULL) {
+    return CVPI_FALSE;
+  }
+
+  write_member(header->bfType);
+  write_member(header->bfSize);
+  write_member(header->bfReserved1);
+  write_member(header->bfReserved2);
+  write_member(header->bfOffBits);
+  write_member(header->bV4Size);
+  write_member(header->bV4Width);
+  write_member(header->bV4Height);
+  write_member(header->bV4Planes);
+  write_member(header->bV4BitCount);
+  write_member(header->bV4Compression);	 
+  write_member(header->bV4SizeImage);	 
+  write_member(header->bV4XPelsPerMeter); 
+  write_member(header->bV4YPelsPerMeter); 
+  write_member(header->bV4ClrUsed);	 
+  write_member(header->bV4ClrImportant);	 
+  write_member(header->bV4RedMask);	 
+  write_member(header->bV4GreenMask);	 
+  write_member(header->bV4BlueMask);	 
+  write_member(header->bV4AlphaMask);	 
+  write_member(header->bV4CSType);	 
+  write_member(header->bV4Endpoints_0);	 
+  write_member(header->bV4Endpoints_1);	 
+  write_member(header->bV4Endpoints_2);	 
+  write_member(header->bV4Endpoints_3);	 
+  write_member(header->bV4Endpoints_4);	 
+  write_member(header->bV4Endpoints_5);	 
+  write_member(header->bV4Endpoints_6);	 
+  write_member(header->bV4Endpoints_7);	 
+  write_member(header->bV4Endpoints_8);	 
+  write_member(header->bV4Endpoints_9);	 
+  write_member(header->bV4Endpoints_10);	 
+  write_member(header->bV4Endpoints_11);	 
+  write_member(header->bV4Endpoints_12);	 
+  write_member(header->bV4Endpoints_13);	 
+  write_member(header->bV4Endpoints_14);	 
+  write_member(header->bV4Endpoints_15);	 
+  write_member(header->bV4Endpoints_16);	 
+  write_member(header->bV4Endpoints_17);	 
+  write_member(header->bV4Endpoints_18);	 
+  write_member(header->bV4Endpoints_19);	 
+  write_member(header->bV4Endpoints_20);	 
+  write_member(header->bV4Endpoints_21);	 
+  write_member(header->bV4Endpoints_22);	 
+  write_member(header->bV4Endpoints_23);	 
+  write_member(header->bV4Endpoints_24);	 
+  write_member(header->bV4Endpoints_25);	 
+  write_member(header->bV4Endpoints_26);	 
+  write_member(header->bV4Endpoints_27);	 
+  write_member(header->bV4Endpoints_28);	 
+  write_member(header->bV4Endpoints_29);	 
+  write_member(header->bV4Endpoints_30);	 
+  write_member(header->bV4Endpoints_31);	 
+  write_member(header->bV4Endpoints_32);	 
+  write_member(header->bV4Endpoints_33);	 
+  write_member(header->bV4Endpoints_34);	 
+  write_member(header->bV4Endpoints_35);	 
+  write_member(header->bV4GammaRed);	 
+  write_member(header->bV4GammaGreen);	 
+  write_member(header->bV4GammaBlue);     
+
+  return CVPI_TRUE;
+}
+#undef write_member
+
+CVPI_BOOL cvpi_bmp_header_alloc_write(FILE* write_ptr, 
+				      cvpi_long width, 
+				      cvpi_long height,
+				      cvpi_dword ppm, 
+				      enum cvpi_bmp_pixel_format pixel_f) {
+  cvpi_bitmap_header header = (cvpi_bitmap_header)cvpi_bmp_header_alloc(width, height, ppm, pixel_f);
+  if(header != NULL) {
+    CVPI_BOOL ret = cvpi_bmp_header_write(write_ptr, header);
+    freeSafe(header);
+    return ret;
+  } else {
+    return CVPI_FALSE;
   }
 }
 
@@ -335,10 +441,9 @@ void cvpi_pbm_header_write(FILE *write_ptr, unsigned long width, unsigned long h
   int flushed = fflush(write_ptr);
   if(written < 0 || flushed != 0) {
     if(written < 0) {
-      cvpi_log_3("%s:%d: Error writing bmp header: fprintf returned:%d.\n",
-		 __func__, __LINE__, written);
+      cvpi_log_3("Error writing pbm header: fflush errno = ", __func__, __LINE__, written);
     } else {
-      cvpi_log_4("%s:%d: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
+      cvpi_log_4("Error writing pbm header: fflush errno = ",
 		 __func__, __LINE__, errno, flushed);
     }
   }
@@ -350,10 +455,10 @@ void cvpi_pgm_header_write(FILE *write_ptr, unsigned long width, unsigned long h
   int flushed = fflush(write_ptr);
   if(written < 0 || flushed != 0) {
     if(written < 0) {
-      cvpi_log_3("%s:%d: Error writing bmp header: fprintf returned:%d.\n",
+      cvpi_log_3("Error writing pgm header: fprintf returned:",
 		 __func__, __LINE__, written);
     } else {
-      cvpi_log_4("%s:%d: Error writing bmp header: fflush\nerrno = %d\nreturned = %d\n",
+      cvpi_log_4("Error writing pgm header: fflush errno = ",
 		 __func__, __LINE__, errno, flushed);
     }
   }

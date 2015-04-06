@@ -1,0 +1,6 @@
+(compile -s -O1 -J cvpi.scd) ;-d2 -I/usr/local/include/
+(compile -library cvpi.scd)
+(compile -library cvpi.import.scm)
+(install-extension 'cvpi
+		   '("cvpi.so" "cvpi.import.so")
+		   '((version "0.0.1")))

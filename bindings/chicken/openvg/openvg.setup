@@ -1,0 +1,6 @@
+(compile -s -O1 -d2 -library -J openvg.scd)
+(compile -library openvg.scd)
+(compile -library openvg.import.scm)
+(install-extension 'openvg
+		   '("openvg.so" "openvg.import.so")
+		   '((version "0.0.1")))

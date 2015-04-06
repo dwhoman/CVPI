@@ -1,0 +1,16 @@
+env = Environment(CCFLAGS='-O3 -std=gnu99 -DCVPI_ASSEMBLY=1 -DCVPI_CAREFUL=1 -DHAVE_BCM_HOST=1 -DCVPI_LOGGING=1',
+                  CPPPATH= ['.', '../include', '/opt/vc/include/', '/opt/vc/include/EGL/', 
+                            '/opt/vc/include/interface/vmcs_host/linux/', '/opt/vc/include/interface/vcos/pthreads/'])
+
+env.Program('cvpi_tests', ['cvpi_egl_config_tests.c','cvpi_egl_surface_functions.c',
+                           'cvpi_image_tests.c','cvpi_tests.c'], 
+            LIBS=['m', 'EGL', 'GLESv2', 'bcm_host', 'libcvpi'], LIBPATH=['/opt/vc/lib', '..'])
+
+env.Program('khr_lock_surface_test', ['khr_lock_surface_test.c'], 
+            LIBS=['m', 'EGL', 'GLESv2', 'bcm_host', 'libcvpi'], LIBPATH=['/opt/vc/lib', '..'])
+
+env.Program('cvpi_sample_motion_detection', ['cvpi_egl_surface_functions.c','cvpi_camera_setup.c', 'cvpi_sample_motion_detection.c'], 
+            LIBS=['m', 'EGL', 'GLESv2', 'bcm_host', 'libcvpi', 'pthread', 'rt'], LIBPATH=['/opt/vc/lib', '..', '.'])
+
+env.Program('cvpi_sample_yuv2bmp', ['cvpi_sample_yuv2bmp.c'], 
+            LIBS=['m', 'EGL', 'GLESv2', 'bcm_host', 'libcvpi'], LIBPATH=['/opt/vc/lib', '..', '.'])

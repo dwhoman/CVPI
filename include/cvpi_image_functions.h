@@ -128,7 +128,9 @@ VGImage cvpi_image_add(const VGImage img1, const VGImage img2, VGshort a, VGshor
    copied to OUTPUT_CHANNELS. The function follows the same formula as
    cvpi_image_add. */
   VGImage cvpi_channel_add(const VGImage image, VGImageChannel channel1, VGImageChannel channel2,
-			   VGshort a, VGshort b, VGfloat scale, VGfloat bias, VGbitfield output_channels);
+			   VGshort a, VGshort b, VGfloat scale, 
+			   VGfloat bias_r, VGfloat bias_g, VGfloat bias_b, VGfloat bias_a,
+			   VGbitfield output_channels);
 
 /* Adds the red, green, and blue channels. The result is copied to the
    channels specified in output_channels. BIAS is divided by 255
@@ -208,7 +210,7 @@ VGImage cvpi_channel_threshold_sector(const VGImage image, VGImageChannel channe
      passed to vgConvolve. TILINGMODE is also passed to vgConvolve. */
   VGImage cvpi_image_threshold_adaptive_mean(const VGImage image, VGshort kernel_size,
 					     CVPI_BOOL above, CVPI_BOOL white, CVPI_BOOL dependent,
-					     VGint bias, VGTilingMode tilingMode);
+					     VGfloat bias, VGTilingMode tilingMode);
   
 /* Add or subtract the specified channel from the other image channels
    Adding will create a white mask and subtracting will create a black
@@ -240,28 +242,28 @@ VGImage cvpi_image_rgba2bw(const VGImage color_image, VGImageChannel sourceChann
    pixels will take in each chanel. */
 
 /* image1 AND image2 */
-inline VGImage cvpi_image_logical_and(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
+VGImage cvpi_image_logical_and(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
 
 /* image1 NAND image2 */
-inline VGImage cvpi_image_logical_nand(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
+VGImage cvpi_image_logical_nand(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
 
 /* image1 OR image2 */
-inline VGImage cvpi_image_logical_or(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
+VGImage cvpi_image_logical_or(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
 
 /* image1 NOR image2 */
-inline VGImage cvpi_image_logical_nor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
+VGImage cvpi_image_logical_nor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
 
 /* image1 XOR image2 */
-inline VGImage cvpi_image_logical_xor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
+VGImage cvpi_image_logical_xor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
 
 /* image1 XNOR image2 */
-inline VGImage cvpi_image_logical_xnor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
+VGImage cvpi_image_logical_xnor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
 
 /* Relative complement; the elements of image1 that are not in image2; image1 \ image2. */
-inline VGImage cvpi_image_logical_complement(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
+VGImage cvpi_image_logical_complement(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
 
 /* The inverse of image1 \ image2. */
-inline VGImage cvpi_image_logical_complement_inv(const VGImage image1, const VGImage image2,
+VGImage cvpi_image_logical_complement_inv(const VGImage image1, const VGImage image2,
 						 VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
 
 VGImage cvpi_image_dilate(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true);
@@ -365,7 +367,7 @@ typedef struct {
    destructively. Use cvpi_bmp_sARGB_8888 if the output is being
    output into a bitmap image. Returns CVPI_FALSE if yuva or rgba is NULL.*/
 CVPI_BOOL cvpi_avuy2argb(cvpi_pixel* yuva, cvpi_pixel* rgba, unsigned long width, unsigned long height);
-cvpi_pixel* cvpi_image2rgba(const VGImage image);
+cvpi_pixel* cvpi_image2argb(const VGImage image);
 
 #ifdef __cplusplus
 } /* extern "C" */

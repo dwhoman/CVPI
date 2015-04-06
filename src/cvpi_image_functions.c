@@ -34,6 +34,10 @@
 #include "cvpi_image_functions.h"
 #endif
 
+#ifndef CVPI_BASE
+#include "cvpi_base.h"
+#endif
+
 #define OUTPUT_LINEAR VG_FALSE
 
 const VGfloat cvpi_invert_colors[20] = {
@@ -784,7 +788,7 @@ VGImage cvpi_channel_add(const VGImage image, VGImageChannel channel1, VGImageCh
 
 VGImage cvpi_color_channels_add(const VGImage image, VGfloat scale_r, VGfloat scale_g,
 				VGfloat scale_b,
-o				VGfloat bias_r, VGfloat bias_g, VGfloat bias_b,
+				VGfloat bias_r, VGfloat bias_g, VGfloat bias_b,
 				VGbitfield output_channels) {
 #define TAKEDOWN cvpi_color_channels_add_takedown
   int BADSTATE = 0;
@@ -801,26 +805,26 @@ o				VGfloat bias_r, VGfloat bias_g, VGfloat bias_b,
     matrix[0] = scale_r;
     matrix[4] = scale_g;
     matrix[8] = scale_b;
-    matrix[16] = bias;
+    matrix[16] = bias_r;
   }
   if(output_channels & VG_GREEN) {
     matrix[1] = scale_r;
     matrix[5] = scale_g;
     matrix[9] = scale_b;
-    matrix[17] = bias;
+    matrix[17] = bias_g;
   }
   if(output_channels & VG_BLUE) {
     matrix[2] = scale_r;
     matrix[6] = scale_g;
     matrix[10] = scale_b;
-    matrix[18] = bias;
+    matrix[18] = bias_b;
   }
   if(output_channels & VG_ALPHA) {
     matrix[3] = scale_r;
     matrix[7] = scale_g;
     matrix[11] = scale_b;
     matrix[15] = 0;
-    matrix[19] = bias;
+    matrix[19] = 0;
   }
 
   VGImage output = VG_INVALID_HANDLE;
@@ -921,7 +925,7 @@ VGImage cvpi_all_channels_add(const VGImage image, VGfloat scale_r, VGfloat scal
  TAKEDOWN:
   if(BADSTATE) {
     /* set output image to  */
-    vgDestroyImageSafe(output_image);
+    vgDestroyImageSafe(output);
     cvpi_vg_error_takedown();
   }
   vgFlush();
@@ -1528,7 +1532,7 @@ VGImage cvpi_channel_threshold_sector(const VGImage image, VGImageChannel channe
   }
 
   /* threshold right sectors */
-  for(j = thin_sector_num; j != 0) {
+  for(j = thin_sector_num; j != 0;) {
     --j;
     child = vgChildImage(image, image_width - thinness,
 			 j*sector_height, thinness, sector_height);
@@ -1580,7 +1584,7 @@ VGImage cvpi_channel_threshold_sector(const VGImage image, VGImageChannel channe
 #endif
     sector_image = cvpi_channel_threshold(child, channel,
 					  0, sector_threshold,
-					  fill, invert, dependent);
+					  fill, invert);
     if(sector_image == VG_INVALID_HANDLE) {
       cvpi_log_1("Unable to threshold sector", __FILE__, __LINE__);
       BADSTATE = 1;
@@ -1610,7 +1614,7 @@ VGImage cvpi_channel_threshold_sector(const VGImage image, VGImageChannel channe
 #if CVPI_CAREFUL == 1
   cvpi_vg_error_check();
 #endif
-  sector_image = cvpi_image_threshold(child, channel,
+  sector_image = cvpi_channel_threshold(child, channel,
 				      0, sector_threshold,
 				      fill, invert);
   if(sector_image == VG_INVALID_HANDLE) {
@@ -1650,7 +1654,7 @@ VGImage cvpi_image_threshold_adaptive_mean(const VGImage image, VGshort kernel_s
 #define TAKEDOWN cvpi_image_threshold_adaptive_mean_takedown
   int BADSTATE = 0;
 
-  const VGshort* kernel = NULL;
+  VGshort* kernel = NULL;
 
   VGImage mean_image = VG_INVALID_HANDLE;
   VGImage difference_image = VG_INVALID_HANDLE;
@@ -1667,7 +1671,13 @@ VGImage cvpi_image_threshold_adaptive_mean(const VGImage image, VGshort kernel_s
 
   unsigned int kernel_2 = kernel_size * kernel_size;
   VGfloat scale = 1.0/kernel_2;
-  if(kernel_size < 1 || kernel_2 > vgGetParameteri(G_MAX_KERNEL_SIZE)) {
+
+  VGint max_kernel_size = vgGetParameteri(image, VG_MAX_KERNEL_SIZE);
+#if CVPI_CAREFUL == 1
+  cvpi_vg_error_check();
+#endif
+
+  if(kernel_size < 1 || kernel_2 > max_kernel_size) {
     cvpi_log_1("bad kernel size", __FILE__, __LINE__);
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -2279,13 +2289,13 @@ static VGImage cvpi_image_logical_common(const VGImage image1, const VGImage ima
   /* create lookup table for particular logic operation */
   if(true_value1 == true_value2) {
     /* logical operation has 1 true value */
-    for(int i = 256; i != 0) {
+    for(int i = 256; i != 0;) {
       --i;
       logic_array[i] = i != true_value1 ? false_color : true_color;
     }
   } else {
     /* logical operation has 2 true values */
-    for(int i = 256; i != 0) {
+    for(int i = 256; i != 0;) {
       --i;
       logic_array[i] = (i != true_value1 && i != true_value2) ? false_color : true_color;
     }
@@ -2322,35 +2332,35 @@ static VGImage cvpi_image_logical_common(const VGImage image1, const VGImage ima
   #undef TAKEDOWN
 }
 
-inline VGImage cvpi_image_logical_and(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_logical_and(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_common(image1, image2, 3, 3, t_c, f_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_nand(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_logical_nand(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_and(image1, image2, f_c, t_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_nor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_logical_nor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_common(image1, image2, 0, 0, t_c, f_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_or(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_logical_or(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_nor(image1, image2, f_c, t_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_xor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_logical_xor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_common(image1, image2, 1, 2, t_c, f_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_xnor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_logical_xnor(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_xor(image1, image2, f_c, t_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_complement(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_logical_complement(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_common(image1, image2, 1, 1, t_c, f_c, nonzero_true);
 }
 
-inline VGImage cvpi_image_logical_complement_inv(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_logical_complement_inv(const VGImage image1, const VGImage image2, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_logical_complement(image1, image2, f_c, t_c, nonzero_true);
 }
 
@@ -2400,7 +2410,7 @@ static VGImage cvpi_image_morph_common(const VGImage image, const VGshort * kern
   /* Upper right element of the input sub-image in the convolution
      becomes the center element (see VG 1.1 spec p. 179 fig. 27). Is the
      full sum of products between the kernel and sub-image. */
-  vgConvolveNoShift(convolved, binary, 3, 3, 1, 1, kernel, 1, 0, VG_TILE_REFLECT);
+  vgConvolveNoShift(convolved, binary, 3, 3, kernel, 1, 0, VG_TILE_REFLECT);
 #if CVPI_CAREFUL == 1
   cvpi_vg_error_check();
 #endif
@@ -2487,7 +2497,7 @@ VGImage cvpi_image_dilate(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BO
 #undef TAKEDOWN
 }
 
-inline VGImage cvpi_image_erode(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
+VGImage cvpi_image_erode(const VGImage image, VGubyte t_c, VGubyte f_c, CVPI_BOOL nonzero_true) {
   return cvpi_image_dilate(image, f_c, t_c, CVPI_NOT(nonzero_true));
 }
 
@@ -2865,6 +2875,8 @@ VGubyte cvpi_channel_min(const VGImage image, VGImageChannel channel) {
     }
   }
 
+ TAKEDOWN:
+
   if(data != NULL) {
     free(data);
   }
@@ -3125,7 +3137,8 @@ VGubyte* cvpi_color_channels_cumulative_distribution(const unsigned int* histogr
   unsigned long accumulate_b = 0;
 
   /* don't optimize by counting down to 0 */
-  for(int i = 0, int j = 256, int k = 512; i < 256; ++i, ++j, ++k) {
+  int i = 0; int j = 256; int k = 512;
+  for(; i < 256; ++i, ++j, ++k) {
     cd[i] = (VGubyte)((accumulate_r += histogram[i])/N);
     cd[j] = (VGubyte)((accumulate_g += histogram[j])/N);
     cd[k] = (VGubyte)((accumulate_b += histogram[k])/N);
@@ -3147,7 +3160,8 @@ VGubyte* cvpi_image_cumulative_distribution(const unsigned int* histogram, VGint
   unsigned long accumulate_a = 0;
 
   /* don't optimize by counting down to 0 */
-  for(int i = 0, int j = 256, int k = 512, int m = 768; i < 256; ++i, ++j, ++k, ++m) {
+  int i = 0; int j = 256; int k = 512; int m = 768;
+  for(; i < 256; ++i, ++j, ++k, ++m) {
     cd[i] = (VGubyte)((accumulate_r += histogram[i])/N);
     cd[j] = (VGubyte)((accumulate_g += histogram[j])/N);
     cd[k] = (VGubyte)((accumulate_b += histogram[k])/N);
@@ -3369,9 +3383,6 @@ VGImage cvpi_color_channels_histogram_equalization(const VGImage image, CVPI_BOO
 #endif
 
   return return_image;
-
-
- TAKEDOWN:
 #undef TAKEDOWN
 }
 VGImage cvpi_image_histogram_equalization(const VGImage image, CVPI_BOOL scale) {
@@ -3419,7 +3430,7 @@ VGImage cvpi_image_histogram_equalization(const VGImage image, CVPI_BOOL scale) 
     min = min > 0 ? min : 255;
     do {
       --i;
-      if(cdf[i] > 0; cdf[i] < min) {
+      if(cdf[i] > 0 && cdf[i] < min) {
 	min = cdf[i];
       }
     } while(i != 0);
@@ -3469,8 +3480,6 @@ VGImage cvpi_image_histogram_equalization(const VGImage image, CVPI_BOOL scale) 
 #endif
 
   return return_image;
-
- TAKEDOWN:
 #undef TAKEDOWN
 }
 
@@ -3797,13 +3806,14 @@ CVPI_BOOL cvpi_avuy2argb(cvpi_pixel* yuva, cvpi_pixel* rgba,
        does not have the necessry intrinsics. */
     
     /* TODO detect ARMv6 or higher, will not work in lower versions */
-#if GCC == 1 && __arm__ == 1
+#if CVPI_ASSEMBLY == 1
     /* Use usat to do the right arithmetic shift and clipping. GCC
        does not have the necessry intrinsics. */
     asm("usat %[value], #8, %[value], ASR #8\n\t":[value] "+r"(r_unusat));
     asm("usat %[value], #8, %[value], ASR #8\n\t":[value] "+r"(g_unusat));
     asm("usat %[value], #8, %[value], ASR #8\n\t":[value] "+r"(b_unusat));
 #else
+#pragma message __FILE__ ": Not using inline assembly."
     /* shift */
     r_unusat = r_unusat >> 8;
     g_unusat = g_unusat >> 8;
@@ -3827,8 +3837,8 @@ CVPI_BOOL cvpi_avuy2argb(cvpi_pixel* yuva, cvpi_pixel* rgba,
   return CVPI_TRUE;
 }
 
-cvpi_pixel* cvpi_image2rgba(const VGImage image) {
-#define TAKEDOWN cvpi_image2rgba_takedown
+cvpi_pixel* cvpi_image2argb(const VGImage image) {
+#define TAKEDOWN cvpi_image2argb_takedown
   int BADSTATE = 0;
 
   cvpi_pixel* data = NULL;

@@ -21,6 +21,8 @@
 #include <EGL/eglext_brcm.h>
 /* EGL_PIXEL_FORMAT_ARGB_8888_PRE_BRCM, etc. */
 #endif
+#else
+#pragma message __FILE__ ": Not including eglext_brcm.h. "
 #endif
 
 /* This file does not exist on the system. */
@@ -359,6 +361,9 @@ struct cvpi_egl_instance_s {
   /* points to the cvpi_egl_settings instance passed into
      cvpi_egl_instance_setup by the user */
   cvpi_egl_settings egl_settings;
+
+  /* link that can be used by EGLNativePixmapType generating function */
+  void* native_data;
 };
 
 /** \fn cvpi_egl_settings cvpi_egl_settings_create(void) 

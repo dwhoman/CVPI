@@ -1,0 +1,4 @@
+((synopsis "VGU bindings")
+ (category graphics)
+ (author "Devin Homan")
+ (license "LGPLv3"))

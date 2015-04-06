@@ -98,9 +98,9 @@ CVPI_BOOL test_cvpi_image_logical_complement_NOT(void);
 /* cvpi_image_logical_complement_inv */
 CVPI_BOOL test_cvpi_image_logical_complement_inv(void);
 CVPI_BOOL test_cvpi_image_logical_complement_inv_NOT(void);
-/* cvpi_image_dialate */
-CVPI_BOOL test_cvpi_image_dialate(void);
-CVPI_BOOL test_cvpi_image_dialate_NOT(void);
+/* cvpi_image_dilate */
+CVPI_BOOL test_cvpi_image_dilate(void);
+CVPI_BOOL test_cvpi_image_dilate_NOT(void);
 /* cvpi_image_erode */
 CVPI_BOOL test_cvpi_image_erode(void);
 CVPI_BOOL test_cvpi_image_erode_NOT(void);
@@ -167,7 +167,7 @@ CVPI_BOOL test_cvpi_pixel_color_average(void);
 /* CVPI_BOOL test_cvpi_pixel2yuv(void); */
 CVPI_BOOL test_cvpi_avuy2ayuv(void);
 
-CVPI_BOOL test_cvpi_image2rgba(void);
+CVPI_BOOL test_cvpi_image2argb(void);
 
 /* OpenVG behavior tests */
 /* Overflow behavior is undefined in the standard. The implementation
@@ -176,6 +176,10 @@ CVPI_BOOL test_cvpi_image2rgba(void);
    behavior such as masking. */
 CVPI_BOOL test_overflow_behavior(void);
 CVPI_BOOL test_negative_behavior(void);
+
+CVPI_BOOL test_vgConvolveNoShift(void);
+
+CVPI_BOOL test_cvpi_bmp_header_alloc_write(void);
 #else
 #pragma message __FILE__ ": CVPI_IMAGE_TESTS already defined."
 #endif

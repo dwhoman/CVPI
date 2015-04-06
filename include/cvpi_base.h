@@ -59,7 +59,8 @@ extern "C" {
 #define cvpi_log_format_5(text) "%s:%d:" #text ":%d:%d:%d\n"
 #define cvpi_log_format_6(text) "%s:%d:" #text ":%d:%d:%d:%d\n"
 
-#if CVPI_ASYNC_LOGGING == 1
+#if CVPI_LOGGING == 2
+#pragma message __FILE__ ": Asynchronous logging enabled."
 #define cvpi_log(n, format, ...)  (cvpi_log_print_threaded(n, sizeof(#format), #format, ## __VA_ARGS__))
 #define cvpi_log_1(text, ...) (cvpi_log(1, cvpi_log_format_1(text), ## __VA_ARGS__))
 #define cvpi_log_2(text, ...) (cvpi_log(2, cvpi_log_format_2(text), ## __VA_ARGS__))
@@ -68,7 +69,18 @@ extern "C" {
 #define cvpi_log_5(text, ...) (cvpi_log(5, cvpi_log_format_5(text), ## __VA_ARGS__))
 #define cvpi_log_6(text, ...) (cvpi_log(6, cvpi_log_format_6(text), ## __VA_ARGS__))
 
-#elif CVPI_NO_LOGGING == 1
+#elif CVPI_LOGGING == 1
+#pragma message __FILE__ ": Synchronous logging enabled."
+#define cvpi_log(n, format, ...) (fprintf(cvpi_log_file, (format), ## __VA_ARGS__))
+#define cvpi_log_1(text, ...) (cvpi_log(1, cvpi_log_format_1(text), ## __VA_ARGS__))
+#define cvpi_log_2(text, ...) (cvpi_log(2, cvpi_log_format_2(text), ## __VA_ARGS__))
+#define cvpi_log_3(text, ...) (cvpi_log(3, cvpi_log_format_3(text), ## __VA_ARGS__))
+#define cvpi_log_4(text, ...) (cvpi_log(4, cvpi_log_format_4(text), ## __VA_ARGS__))
+#define cvpi_log_5(text, ...) (cvpi_log(5, cvpi_log_format_5(text), ## __VA_ARGS__))
+#define cvpi_log_6(text, ...) (cvpi_log(6, cvpi_log_format_6(text), ## __VA_ARGS__))
+
+#else  /* synchronous logging */
+#pragma message __FILE__ ": Logging not enabled."
 #define cvpi_log(...)
 #define cvpi_log_1(...)
 #define cvpi_log_2(...)
@@ -76,15 +88,6 @@ extern "C" {
 #define cvpi_log_4(...)
 #define cvpi_log_5(...)
 #define cvpi_log_6(...)
-
-#else  /* synchronous logging */
-#define cvpi_log(n, format, ...) (fprintf(cvpi_log_file, (format), ## __VA_ARGS__))
-#define cvpi_log_1(text, ...) (cvpi_log(cvpi_log_format_1(text), ## __VA_ARGS__))
-#define cvpi_log_2(text, ...) (cvpi_log(cvpi_log_format_2(text), ## __VA_ARGS__))
-#define cvpi_log_3(text, ...) (cvpi_log(cvpi_log_format_3(text), ## __VA_ARGS__))
-#define cvpi_log_4(text, ...) (cvpi_log(cvpi_log_format_4(text), ## __VA_ARGS__))
-#define cvpi_log_5(text, ...) (cvpi_log(cvpi_log_format_5(text), ## __VA_ARGS__))
-#define cvpi_log_6(text, ...) (cvpi_log(cvpi_log_format_6(text), ## __VA_ARGS__))
 #endif
 
 #ifdef __cplusplus

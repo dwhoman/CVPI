@@ -81,14 +81,19 @@ static cvpi_egl_instance cvpi_egl_wrapper_create() {
     CVPI_TRUE_TEST(cvpi_egl_settings_surface_type(settings, cvpi_egl_surface_bits_window, cvpi_egl_settings_remove));
 
   if(!good) {
-    free(settings);
+    if(settings != NULL) {
+      free(settings);
+      settings = NULL;
+    }
     return NULL;
   }
   
   return cvpi_egl_instance_setup(settings);
 }
 static void cvpi_egl_wrapper_destroy(cvpi_egl_instance instance) {
-  free(instance->egl_settings);
+  if(instance->egl_settings != NULL) {
+    free(instance->egl_settings);
+  }
   cvpi_egl_instance_takedown(instance);
 }
 
@@ -104,16 +109,17 @@ void test_runner(CVPI_BOOL(*test_function)(void), char* name) {
 #define TEST(f) do {CVPI_BOOL(*p18025ldgfaln1293)(void) = (f); test_runner(p18025ldgfaln1293,(#f));} while(0)
 
 int main() {
+#define TAKEDOWN main_takedown
   /* cvpi_log_file = stderr; */
 
   /* egl setup tests */
-  TEST(test_cvpi_egl_settings_create);
-  TEST(test_cvpi_egl_instance_setup_takedown);
-  TEST(test_cvpi_egl_instance_openvg_pixmap);
+  /* TEST(test_cvpi_egl_settings_create); */
+  /* TEST(test_cvpi_egl_instance_setup_takedown); */
+  /* TEST(test_cvpi_egl_instance_openvg_pixmap); */
 
   /* tests not requiring egl */
   TEST(test_cvpi_avuy2argb);
-
+  TEST(test_cvpi_bmp_header_alloc_write);
   /* tests requiring egl */
   cvpi_egl_instance instance = cvpi_egl_wrapper_create();
   if(instance == NULL) {
@@ -122,6 +128,8 @@ int main() {
   }
   TEST(test_cvpi_pixel);
 
+  TEST(test_vgConvolveNoShift);
+
   TEST(test_cvpi_yuyv2yuva);
   TEST(test_cvpi_image_add_odd);
   TEST(test_cvpi_image_add_single);
@@ -129,9 +137,6 @@ int main() {
   TEST(test_cvpi_subtract_images_odd);
   TEST(test_cvpi_image_add_odd_scale_add);
   TEST(test_cvpi_subtract_images_odd_scale_add);
-  /* these tests can run out of memory */
-  /* TEST(test_cvpi_image_add_huge_even); */
-  /* TEST(test_cvpi_image_add_huge_odd); */
 
   TEST(test_cvpi_channel_add_RB);
   TEST(test_cvpi_channel_add_RR);
@@ -174,8 +179,8 @@ int main() {
   TEST(test_cvpi_image_logical_complement_NOT);
   TEST(test_cvpi_image_logical_complement_inv_NOT);
 
-  TEST(test_cvpi_image_dialate);
-  TEST(test_cvpi_image_dialate_NOT);
+  TEST(test_cvpi_image_dilate);
+  TEST(test_cvpi_image_dilate_NOT);
   TEST(test_cvpi_image_erode);
   TEST(test_cvpi_image_erode_NOT);
   TEST(test_cvpi_image_hit_miss);
@@ -227,18 +232,16 @@ int main() {
   TEST(test_cvpi_pixel_color_average);
   TEST(test_cvpi_avuy2ayuv);
 
-  /* TEST(test_cvpi_image_mean_small); */
-  /* TEST(test_cvpi_image_mean_max); */
-  /* TEST(test_cvpi_image_mean_huge); */
-  //TEST(test_cvpi_image_mean_compare);
-
-  TEST(test_cvpi_image2rgba);
+  TEST(test_cvpi_image2argb);
 
   TEST(test_cvpi_image_rgba_to_binary);
   TEST(test_overflow_behavior);
   TEST(test_negative_behavior);
-
-  cvpi_egl_wrapper_destroy(instance);
-
+ TAKEDOWN:
+  if(instance != NULL) {
+    cvpi_egl_wrapper_destroy(instance);
+  }
+  
   return 0;
+#undef TAKEDOWN;
 }
