@@ -82,11 +82,16 @@ EGLNativePixmapType cvpi_egl_surface_pixmap_native_creator(cvpi_egl_instance egl
 /* function for surface_pixmap_destroy_function function pointer */
 EGLBoolean cvpi_egl_surface_pixmap_native_destroyer(cvpi_egl_instance egl_instance) {
   if(egl_instance->native_data != NULL) {
+    EGLBoolean retval = EGL_TRUE;
+    if(!eglDestroyGlobalImageBRCM(egl_instance->native_data)) {
+      fprintf(stderr, "eglDestroyGlobalImageBRCM returned EGL_FALSE.\n");
+      retval = EGL_FALSE;
+    }
     free(egl_instance->native_data);
     egl_instance->native_data = NULL;
-    return CVPI_TRUE;
+    return retval;
   } else {
-    return CVPI_FALSE;
+    return EGL_FALSE;
   }
 }
 /* end EGL Pixmap */

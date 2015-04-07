@@ -1,0 +1,18 @@
+The current Autotools build does not work.
+
+The project can be build with SCons. 
+The SConstruct and tests/SConstript files must be edited 
+to change build settings, specifically the -D flag values.
+
+CVPI_CAREFUL can be set to 1 or 0. 1 will check for errors after 
+every OpenVG function call. 0 will only check for errors after
+memory allocation functions.
+
+CVPI_LOGGING can be set to 0, 1, or 2. 0: no logging will occurr.
+1:logging will be synchronous. 2: logging will be asynchronous.
+
+CVPI_ASSEMBLY should be kept at 1 for now.
+HAVE_BCM_HOST should also be kept at 1 for now.
+
+CVPI has only been tested on the Raspberry Pi, but may support other
+platforms.
