@@ -1,6 +1,18 @@
+CVPI is a C library providing functions for hardware accelerated
+computer vision on mobile and embedded platforms. See the see CVPI
+manual in the doc directory for details.
+
+CVPI is distributed under the terms of the LGPLv3, see file
+"COPYING.LIB" for details.
+
+Functions may or may not work properly but should not cause your
+program to crash.  All functions have been tested for stability but
+not all for correctness. All testing, so far, has been exclusive to
+the Raspberry Pi.
+
 The current Autotools build does not work.
 
-The project can be build with SCons. 
+The project can be built with SCons. 
 The SConstruct and tests/SConstript files must be edited 
 to change build settings, specifically the -D flag values.
 
@@ -8,7 +20,7 @@ CVPI_CAREFUL can be set to 1 or 0. 1 will check for errors after
 every OpenVG function call. 0 will only check for errors after
 memory allocation functions.
 
-CVPI_LOGGING can be set to 0, 1, or 2. 0: no logging will occurr.
+CVPI_LOGGING can be set to 0, 1, or 2. 0: no logging will occur.
 1:logging will be synchronous. 2: logging will be asynchronous.
 
 CVPI_ASSEMBLY should be kept at 1 for now.

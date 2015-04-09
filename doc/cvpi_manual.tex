@@ -1,0 +1,1742 @@
+% [calc-mode: plain: t]
+% [calc-mode: language: latex]
+\documentclass[12pt]{report}
+
+\def\byX {\!\!\times\!\!}
+\usepackage{mdframed}
+\usepackage{listings}
+\usepackage[letterpaper, margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage[breaklinks]{hyperref}
+\usepackage{url}
+\usepackage{breakurl}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{hyphenat}
+\usepackage{float}
+\usepackage{subfig}
+\author{Devin Homan}
+\date{Version 0.1}
+\title{CVPI\\A Computer Vision Library\\For Mobile and Embedded Platforms}
+\begin{document}
+\lstset{language=C}
+
+\maketitle
+\tableofcontents
+\null\vfill
+\noindent
+Copyright \copyright  2015. See the AUTHORS document for attribution.\\
+    Permission is granted to copy, distribute and/or modify this document
+    under the terms of the GNU Free Documentation License, Version 1.3
+    or any later version published by the Free Software Foundation;
+    with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
+    A copy of the license is included in the section entitled "GNU
+    Free Documentation License".
+\newpage
+\chapter{Introduction}
+\label{sec-1}
+CVPI is a library for implementing computer vision programs on
+computers supporting OpenVG. It adds additional image processing
+capabilities to OpenVG that are necessary for computer vision, as well
+a as providing an interface to setup the rendering environment.
+
+OpenVG is a hardware accelerated C API for vector and raster 2D
+graphics \cite{openvg}. It is widely supported on mobile and on
+embedded platforms.
+\section{Motivation}
+\label{sec-1-1}
+Single board computers, such as the Raspberry Pi, have become a
+popular platform for robotics. These boards come with GPUs, which are
+currently not being utilized in this area. The GPUs on these computers
+support OpenVG and OpenGL~ES. Current computer vision software, such
+as OpenCV, rely on OpenCL or CUDA, which are GPU languages that are
+not supported on current mobile and embedded GPUs. Currently, to do
+computer vision on mobile and embedded platforms, all computation has
+to be performed by the on board CPU, or the data has to be transferred
+to a remote computer for processing.  OpenVG offers the necessary
+functionality to create computer vision software and is available
+natively on these platforms.
+
+The Raspberry Pi is already being used for computer vision controlled
+robots and is marketed as a computing platform for teaching
+programming and computer hardware concepts to secondary students. In
+one such example, a high-school student built a line tracking robot
+using OpenCV. The Raspberry~Pi, which normally runs at 800MHz, was
+overclocked to 1GHz, and the tracking rate was between 12 to 14fps
+\cite{robocup}.  Running OpenVG and other GPU code is non-trivial and
+under-documented on the Raspberry~Pi. The CVPI EGL interface aims to
+alleviate the complexity as much as possible. CVPI can also allow for
+the same results, that the student achieved with OpenCV, with greater
+efficiency by moving computation to the GPU.
+
+CVPI could be utilized beyond the Raspberry~Pi. Many GPUs used in
+smart phones and other mobile devices support OpvenVG; though Android
+apparently does not have an OpenVG API implementation. There are other
+competing single boards, such as pcDuino, Odroid, and Banana~Pi that
+could also utilize CVPI.
+\section{Existing Software Architecture}
+\label{sec-1-2}
+OpenVG interfaces with the kernel using EGL (Native Platform Graphics
+Interface). EGL, OpenVG, and OpenGL~ES are C~APIs published by
+Khronos. EGL is used to set up the rendering context: surface
+dimensions, what libraries to support (OpenVG or OpenGL), pixel
+format, where rendering will be done (on screen or in memory)
+\cite{egl}. The Raspberry~Pi's Khronos~APIs were implemented by the
+GPU chip manufacturer, Broadcom, and are BSD licensed \cite{rPiVid}.
+
+OpenGL ES was not used in this project. OpenVG and OpenGL~ES cannot
+communicate directly with each-other; they cannot share contexts
+\cite[p.~7]{egl}. They could potentially communicate by reading and
+writing to and from main memory. OpenVG has so far been sufficient for
+implementing computer vision related algorithms.
+\section{CVPI Interface and Library}
+\label{sec-1-3}
+CVPI has two main parts, an EGL setup and take-down interface, and a
+library of image processing functions relevant to computer vision.
+
+CVPI offers a template interface for setting up and taking down
+EGL. Setting up EGL correctly is non-trivial, especially on the
+Raspberry~Pi, with steps that have to be done in a certain order and
+settings that are very particular. The majority of the steps are
+always the same; however, there are some steps that cannot be
+accounted for, which are implementation dependent, that the user must
+provide.
+
+CVPI is meant to add to OpenVG rather than exist on top of it. OpenVG
+is a C API, and so CVPI was written in C, specifically C99. C also
+has the benefit of portability between client languages. CVPI can be
+used by programmers wishing to write their projects in other
+languages. Most languages have built-in or standard methods for binding
+to C functions and values.
+\chapter{CVPI EGL Interface}
+\label{sec-2}
+% by passing function pointers to the interface
+
+Setting up and taking down EGL is non-trivial. The file {\tt cvp\_egl\_config.h}
+contains the functions
+{\tt cvpi\_egl\_settings\_create}, {\tt cvpi\_egl\_settings\_check},
+{\tt cvpi\_egl\_instance\_setup}, and {\tt cvpi\_egl\_instance\_takedown} to help
+the programmer in this task.
+
+{\tt cvpi\_egl\_settings\_create} creates a structure of settings
+information that can be passed to {\tt cvpi\_egl\_settings\_create} or
+to {\tt cvpi\_egl\_settings\_check}. {\tt cvpi\_egl\_settings\_check}
+can be used to check for faulty settings in the structure. If a bad
+setting is found, CVPI\_FALSE is returned and a warning is printed to
+the standard error output (stderr). Every setting has associated {\tt set} and
+{\tt check} functions.
+
+{\tt cvpi\_egl\_instance\_setup} creates a cvpi\_egl\_instance structure that
+can be passed to {\tt cvpi\_egl\_instance\_takedown}. The structure gives the
+take-down procedure the information needed to undo the setup
+procedure. The {\tt cvpi\_egl\_instance\_setup} template performs the
+following steps to setup EGL on the Raspberry~Pi:
+\begin{figure}[H]
+\begin{mdframed}[style=default]
+\begin{enumerate}
+\item Calls bcm\_host\_init()
+\begin{itemize}
+\item Specific to the Raspberry~Pi, it is an undocumented procedure
+  required for Broadcom's implementation
+\end{itemize}
+\item Calls eglGetDisplay()
+\item Calls eglInitialize()
+\begin{itemize}
+\item Initializes the display returned by eglGetDisplay
+\end{itemize}
+\item Calls eglBindAPI()
+\begin{itemize}
+\item Chooses the rendering API: OpenVG or OpenGL ES
+\end{itemize}
+\end{enumerate}
+\end{mdframed}
+\caption{Algorithm for setting up EGL. \emph{(cont.)}}
+\end{figure}
+\pagebreak
+\begin{figure}[H]
+\ContinuedFloat
+\begin{mdframed}[style=default]
+\begin{enumerate}
+\setcounter{enumi}{4}
+\item Calls eglChooseConfig() twice
+\begin{itemize}
+\item First, to get the number of configurations supporting the client
+  provided settings.  Space is allocated, and {\tt eglChooseConfig()}
+  is called again to populate the space with configuration information.
+\end{itemize}
+\item An EGL surface is created. If the surface is a pixmap or window,
+then the user must supply a function to create an EGLNativePixmapType
+or an EGLNativeWindowType, respectively. These are implementation
+specific types.
+\begin{itemize}
+\item If the user specified a pixmap surface
+\begin{enumerate}
+\item EGLNativePixmapType is created using a user supplied function.
+\item {\tt eglCreatePixmapSurface()} uses the EGLNativePixmapType and
+the\\ {\tt eglChooseConfig()} generated configuration list to create an
+EGL surface. The function loops through configurations
+returned by {\tt eglChooseConfig()} until one works.
+\end{enumerate}
+\item If the user specified a window surface
+\begin{enumerate}
+\item EGLNativeWindowType is created using a user supplied
+  function. There are multiple Broadcom implementations for creating
+  window surfaces, such as the set of functions {\tt vc\_dispmanx\_*},
+  which are Broadcom specific, and OpenWF, a Khronos API for creating
+  window surfaces \cite{rPiVid}.
+\item {\tt eglCreateWindowSurface()} uses the EGLNativeWindowType and the\\
+{\tt eglChooseConfig()} generated configuration list to create an
+EGL surface. The function loops through configurations
+returned by {\tt eglChooseConfig()} until one works.
+\end{enumerate}
+\item If the user specified a pbuffer surface
+\begin{enumerate}
+\item {\tt eglCreatePbufferSurface()} is called with the {\tt eglChooseConfig()}
+generated configuration list to create an EGL surface. The
+function loops through configurations returned by
+{\tt eglChooseConfig()} until one works.
+\end{enumerate}
+\item If no surface type was specified, then this step is skipped.
+\end{itemize}
+\item Calls {\tt eglCreateContext()} to create a rendering context.
+\item Calls {\tt eglMakeCurrent()} if the user specified for this context
+to be the current context.
+\begin{itemize}
+\item The current-context {\tt read} and {\tt draw} parameters are set
+  to the same surface. OpenGL~ES allows for different surfaces for
+  reading and drawing; however, OpenVG does not. The user can change
+  this after {\tt cvpi\_egl\_instance\_setup} finishes.
+\end{itemize}
+\end{enumerate}
+\end{mdframed}
+\caption{Algorithm for setting up EGL.}
+\end{figure}
+
+Every step in the process is logged to {\tt cvpi\_log\_file}, which
+defaults to {\tt stderr}.  Finding a working EGL setup procedure for a
+particular project will likely require multiple revisions. Broadcom's
+EGL implementation is poorly documented and does not give explanations
+why failures occur when EGL fails to start, which is in part the
+reason for {\tt cvp\_egl\_config.h}.
+
+If an EGL error occurs in {\tt cvpi\_egl\_instance\_setup}, then the
+function will jump to the appropriate place in the take-down
+procedure. If a system error occurs, then the GPU might be left in a
+bad state that makes it impossible to create another EGL instance
+without reboot. The operating system does not appear to entirely clean
+up GPU related material after the program halts. The take-down
+procedure is as follows:
+\begin{figure}[H]
+\begin{mdframed}[style=default]
+\begin{enumerate}
+\item Call {\tt eglDestroyContext()}.
+\item Call {\tt eglDestroySurface()}.
+\item If a window or pixmap was created, call a user supplied
+function to undo what was done by the user supplied
+EGLNativeWindowType or EGLNativePixmapType returning function.
+\item Free memory allocated for {\tt eglChooseConfig()}.
+\item Call {\tt eglTerminate()}.
+\item Free memory allocated for {\tt cvpi\_egl\_instance\_setup}'s
+  return value.
+\item Call {\tt bcm\_host\_deinit()}, if using the Broadcom implementation.
+\end{enumerate}
+\end{mdframed}
+\caption{Algorithm for taking down up EGL.}
+\end{figure}
+\chapter{CVPI Image Library}
+\label{sec-3}
+\section{OpenVG API}
+\label{sec-3-1}
+OpenVG has functions for manipulating images. OpenVG can read and
+write using a variety of different formats. Internally, images are
+represented using four 8-bit channels per pixel \cite{openvg}.
+
+The choice of what functions to implement came from a list of
+functions which are described on the web site, \underline{Image
+  Processing Learning Resources} in the ``Worksheets'' subdirectory
+\cite{HIPR2}. Other functions, such as histogram equalization, come
+from \underline{Computer Vision} by Richard Szeliski
+\cite{Szeliski}. For the most part, functions were only implemented if
+they could initialize the GPU and could not be trivially and directly
+done with the existing OpenVG functions. Other functions that cannot
+utilize the GPU might be added to CVPI in the future. The GPU is very
+proficient at performing mapping operations on data sets but is not
+very good at doing reduction operations.
+
+\subsection{CPU/GPU Memory Transfer}
+\label{sec-3-1-1}
+OpenVG can read data directly from CPU memory into an image using {\tt
+  vgImageSubData}, and can write directly to CPU memory with {\tt
+  vgGetImageSubData}. OpenVG uses RGBA (red, green, blue, alpha) to
+represent the four channels \cite{openvg}. On little-endian systems,
+CVPI uses VG\_sARGB\_8888 for the color space. When processing data,
+returned by {\tt vgGetImageSubData}, with array indexing, the blue
+channel is the first index, green is the second, red is the third, and
+alpha is the last. CVPI has not yet been tested on a big-endian
+system. ARM CPUs support both endiannesses but, so far, there are no
+available big-endian operating system images for the Raspberry~Pi.
+
+CVPI assumes that in memory, the image's origin is in the upper left
+with data proceeding left to right and then top to bottom, which is
+the standard for Video4Linux (V4L) formats
+\cite[Sec.~2.1]{videoForLinux}. OpenVG's image coordinate system
+starts in the lower left corner with the x-position in the horizontal
+and the y-position in the vertical \cite[Sec.~10.1]{openvg}.
+Essentially the y-axis is flipped and translated.  CVPI functions are
+not affected by this difference, unless otherwise noted.
+
+\subsection{Copying Images}
+\label{sec-3-1-2} {\tt vgCopyImage} can copy part of an image into
+another image \cite{openvg}. This function is utilized extensively by
+CVPI.
+
+\subsection{Pixel Vector Matrix Multiplication}
+\label{sec-3-1-3} {\tt vgColorMatrix} multiplies a $4\byX 4$-matrix by each
+pixel vector and adds a bias vector to the resulting value to
+create a new image \cite{openvg}.
+{\tt vgColorMatrix}'s matrix argument is the transpose of the
+mathematical representation, plus four bias values.
+
+\begin{figure}[H]
+\begin{mdframed}[style=default]
+\begin{lstlisting}
+A[20] = {1,  2, 3, 4,
+	 5,  6, 7, 8,
+	 9, 10,11,12,
+	 13,14,15,16,
+
+         17,18,19,20};
+\end{lstlisting}
+
+    \[
+%%% [[R'], [G'], [B'], [A']] := [[1, 5, 9, 13], [2, 6, 10, 14], [3, 7, 11, 15], [4, 8, 12, 16]] * [[R], [G], [B], [A]] + [[17], [18], [19], [20]] => [[(R + 5 * G + 9 * B + 13 * A + 17)], [(2 * R + 6 * G + 10 * B + 14 * A + 18)], [(3 * R + 7 * G + 11 * B + 15 * A + 19)], [(4 * R + 8 * G + 12 * B + 16 * A + 20)]] %%%
+ \begin{pmatrix} R' \\ G' \\ B' \\ A' \end{pmatrix}
+          \gets \begin{pmatrix} 1 & 5 & 9 &
+ 13 \\ 2 & 6 & 10 & 14 \\ 3 & 7 & 11 & 15 \\ 4 & 8 & 12 & 16 \end{pmatrix}
+  \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix}
+  + \begin{pmatrix} 17 \\ 18 \\ 19 \\ 20 \end{pmatrix} \to \begin{pmatrix} R + 5 G + 9 B + 13 A
+  + 17 \\ 2 R + 6 G + 10 B + 14 A
+            + 18 \\ 3 R + 7 G + 11 B + 15 A + 19 \\ 4 R + 8 G + 12 B + 16 A + 20 \end{pmatrix}
+\]
+\end{mdframed}
+  \caption{{\tt vgColorMatrix} argument and mathematical representation \cite[p.~176]{openvg}.}
+\end{figure}
+
+The square matrix is an array of floats between zero and one. The
+last four parameters of the input array are also floats between
+zero and one. OpenVG represents pixel values as decimal numbers
+between 0 and 1 when multiplying and adding, but the output is
+then re-scaled to range from 0 to 255.
+
+\subsubsection{Pre-Defined Matrices}
+CVPI has a number of pre-defined inputs.
+\begin{description}
+\item [{cvpi\_invert\_colors}]
+      \[
+%%% [[-1, 0, 0, 0], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]] * [[R], [G], [B], [A]] + [[255], [255], [255], [0]] => [[(255 - R)], [(255 - G)], [(255 - B)], [A]] %%%
+ \begin{pmatrix} -1 & 0 & 0 &
+ 0 \\ 0 & -1 & 0 & 0 \\ 0 & 0 & -1 & 0 \\ 0 & 0 & 0 & 1 \end{pmatrix}
+          \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix}
+          + \begin{pmatrix} 255 \\ 255 \\ 255 \\ 0 \end{pmatrix} \to \begin{pmatrix} 255
+  - R \\ 255 - G \\ 255 - B \\ A \end{pmatrix}
+\]
+\end{description}
+
+\begin{description}
+\item[{cvpi\_avuy2ayuv}] Change the channel ordering returned by the function
+                        {\tt cvpi\_yuyv2yuva} to canonical form.
+\end{description}
+    \[
+%%% [[0, 0, 1, 0], [0, 1, 0, 0], [1, 0, 0, 0], [0, 0, 0, 1]] * [[V], [U], [Y], [A]] => [[Y], [U], [V], [A]] %%%
+ \begin{pmatrix} 0 & 0 & 1 &
+ 0 \\ 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \\ 0 & 0 & 0 & 1 \end{pmatrix}
+          \begin{pmatrix} V \\ U \\ Y \\ A \end{pmatrix} \to \begin{pmatrix} Y \\ U \\ V \\ A \end{pmatrix}
+\]
+
+\begin{description}
+\item[{cvpi\_pixel\_average}] Average all channel values together and
+output the average in each channel.
+\item[{cvpi\_pixel\_color\_average}] Average the color channel values together and
+output the average in each color channel.
+\item [{cvpi\_channel\_red}, {cvpi\_channel\_green}, {cvpi\_channel\_blue},
+  {cvpi\_channel\_alpha}] Replace the values in the other
+channels with the value in the specified channel.
+\end{description}
+
+\subsection{Convolution}
+\label{sec-3-1-4}
+OpenVG has two functions for convolution {\tt vgConvolve} and {\tt
+  vgSeparableConvolve}. OpenCV also has a Gaussian blur function,
+{\tt vgGaussianBlur} \cite{openvg}.
+
+OpvenVG's convolution formula is:
+
+\[I(x,y)=s\left( \sum_{i=0}^{w-1}\sum_{j=0}^{h-1}k(w-i-1,h-j-1)P(x+i-s_x,y+j-s_y)\right) +b\]
+
+where $w$ and $h$ are the image's width and height, $k$ is the
+convolution kernel, $P$ is the input image, $s_x$ and $s_y$ are
+integer values for shifting the input and output, $s$ is a scalar, and
+$b$ is a bias. Image channel values are treated
+as floating point values between 0 and 1, so $b$ must be a value
+between -1 and 1. The image and kernel are indexed from zero starting in the
+lower left corner \cite[pp.~177-180]{openvg}.
+
+When coding in a convolution kernel in C, the
+mathematical definition of the convolution kernel must be
+transposed then flipped. The kernel dimensions will also be
+switched from the mathematical representation.
+
+For example,
+   \[\begin{pmatrix} 1 & 4 & 7 \\ 2 & 5 & 8 \\ 3 & 6 & 9 \end{pmatrix}^T
+          \begin{pmatrix} 0 & 0 &
+ 1 \\ 0 & 1 &
+      0 \\ 1 & 0 & 0 \end{pmatrix} \to \begin{pmatrix} 3 & 2 & 1 \\ 6 & 5 & 4 \\ 9 & 8 & 7 \end{pmatrix}
+\]
+
+\begin{lstlisting}
+VGshort kernel[9] = {3,2,1,
+                     6,5,4,
+                     9,8,7};
+\end{lstlisting}
+\begin{proof}
+  Given a two-dimensional C array representation of an OpenVG kernel,
+  C defines the one-dimensional index of an element in a
+  two-dimensional array to be $y\cdot \text{arrayHeight} + x$. The
+  OpenVG kernel entry $(i,j)$ is located at $i\cdot\text{kernelHeight}
+  + j$ \cite[p.~178]{openvg}.  So because $\text{arrayHeight} =
+  \text{kernelHeight}$ and $\text{arrayWidth} = \text{kernelWidth}$,
+  $\text{array}[x][y] = \text{kernel}(i,j)$, where $x\equiv i$ and
+  $y\equiv j$.  Because the array starts in the upper left and the
+  kernel starts in the lower left, this mapping will flip vertically
+  the visual ordering. The matrix array is in row-major form, so to
+  get the column major form, the matrix must be transposed. To go from
+  the mathematical representation, to the OpenVG input array
+  representation, the steps must be done in reverse order. Thus, the
+  transpose must be done before flipping.
+
+
+\[
+%%% trn([[3, 2, 1], [6, 5, 4], [9, 8, 7]] * [[0, 0, 1], [0, 1, 0], [1, 0, 0]]) => [[1, 4, 7], [2, 5, 8], [3, 6, 9]] %%%
+ \left( \begin{pmatrix} 3 & 2 & 1 \\ 6 & 5 & 4 \\ 9 & 8 & 7 \end{pmatrix}
+  \begin{pmatrix} 0 & 0 &
+ 1 \\ 0 & 1 &
+      0 \\ 1 & 0 &
+           0 \end{pmatrix} \right)^T \to \begin{pmatrix} 1 & 4 & 7 \\ 2 & 5 & 8 \\ 3 & 6 & 9 \end{pmatrix}
+\]
+\end{proof}
+\subsection{Value Mapping}
+\label{sec-3-1-5}
+OpenVG has two functions, {\tt vgLookup} and {\tt vgLookupSingle},
+that can be used for function mapping. The mapping functions are
+represented by arrays of length 256, with values ranging from 0 to
+255.  {\tt vgLookup} uses a different mapping function for each
+channel.
+
+\[\begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix} \begin{matrix}
+    f_R\atop\longrightarrow \\ f_G\atop\longrightarrow \\ f_B\atop\longrightarrow \\ f_A\atop\longrightarrow
+    \end{matrix} \begin{pmatrix} R' \\ G' \\ B' \\ A' \end{pmatrix} \]
+While, {\tt vgLookupSingle} maps a single channel, $C$, to a value
+representing all four channels using a single mapping function \cite{openvg}.
+\[C\rightarrow\begin{pmatrix} R' \\ G' \\ B' \\ A' \end{pmatrix}
+    \]
+
+CVPI provides a number of function arrays for use with {\tt vgLookup}.
+\begin{description}
+\item[{cvpi\_identity\_array}] The input values equal the output values.
+\item[{cvpi\_inversion\_array}] Output equals $255 - \text{input}$.
+\item[{cvpi\_255\_array}] All values are mapped to 255.
+\item[{cvpi\_zeros\_array}] All values are mapped to 0.
+\item[{cvpi\_binary\_array}] 0 is mapped to 0, and non-zero values are mapped to 255.
+\item[{cvpi\_binary\_array\_inverted}] 0 is mapped to 255, and non-zero values mapped to 0.
+\item[{cvpi\_sqrt\_array\_floor}] $\left\lfloor\sqrt{x}\right\rfloor$
+\item[{cvpi\_sqrt\_array\_ceil}] $\left\lceil\sqrt{x}\,\right\rceil$
+\item[{cvpi\_sqrt\_array\_round}] $\left\lfloor\sqrt{x}+0.5\right\rfloor$
+\end{description}
+
+\section{Filters}
+\label{sec-3-2}
+CVPI provides a number of pre-defined feature detection
+kernels. It also provides a function, {\tt cvpi\_image\_magnitude}, for
+calculating the gradient magnitude, that is
+
+\[\sqrt{K_1^2+K_2^2}\]
+
+where $K_1$ and $K_2$ are the convolution results. The function is
+applied independently to each channel.
+
+\begin{figure}[H]
+\begin{mdframed}[style=default]
+\begin{tabular}{rcc}
+& Y & X \\
+Sobel &
+$\begin{pmatrix} -1 & -2 & -1 \\ 0 & 0 & 0 \\ 1 & 2 & 1 \end{pmatrix}$&
+$\begin{pmatrix} -1 & 0 & 1 \\ -2 & 0 & 2 \\ -1 & 0 & 1 \end{pmatrix}$\\
+Scharr &
+$\begin{pmatrix} 3 & 10 & 3 \\ 0 & 0 & 0 \\ -3 & -10 & -3 \end{pmatrix}$&
+$\begin{pmatrix} 3 & 0 & -3 \\ 10 & 0 & -10 \\ 3 & 0 & -3 \end{pmatrix}$\\
+Prewitt&
+$\begin{pmatrix} -1 & -1 & -1 \\ 0 & 0 & 0 \\ 1 & 1 & 1 \end{pmatrix}$&
+$\begin{pmatrix} -1 & 0 & 1 \\ -1 & 0 & 1 \\ -1 & 0 & 1 \end{pmatrix}$\\
+Robert's Cross &
+$\begin{pmatrix} 0 & 1 \\ -1 & 0 \end{pmatrix}$&
+$\begin{pmatrix} 1 & 0 \\ 0 & -1 \end{pmatrix}$\\
+\end{tabular}
+\end{mdframed}
+  \caption{Predefined convolution matrices \cite{HIPR2}\cite{wiki:Sobel}.}
+\end{figure}
+\subsection{Magnitude}
+\label{sec-3-2-1}
+\[G = \sqrt{G_x^2+ G_y^2}\].
+
+The function {\tt cvpi\_image\_magnitude} calculates the pixel
+magnitude between two images. For the magnitude to be computed on the
+GPU, the sum cannot exceed 255. The inputs $G_x$ and $G_y$ are integer
+values between 0 and 255. Let $G_x = ax$ and $G_y = ay$, the formula
+becomes
+\[G = a\sqrt{x^2+ y^2}\],
+where $x^2+y^2 \le 255$, $x^2\le 127.5$,
+and $y^2\le 127.5$.
+Given $G_x^2 = a^2x^2$ and solving for $a$ where $G_x=255$ and
+$x=\sqrt{127.5}$, $a = 22.5831795814$.
+
+Three {\tt vgLookup} array functions were calculated with $G_x$ as the
+index input.
+
+\[x_{\text{ceil}} = \left\lceil\frac{G_x}{a}\right\rceil,\; x_{\text{floor}} =
+  \left\lfloor\frac{G_x}{a}\right\rfloor,\text{ and } x_{\text{round}} = \left\lfloor0.5+\frac{G_x}{a}\right\rfloor\]
+
+{\tt cvpi\_image\_magnitude} applies the same look-up table to both inputs,
+$G_x$ and $G_y$. The user specifies which table to use. The
+resulting images are added together with {\tt cvpi\_image\_add}. The sums
+will vary between 0 and 255. The square root function is applied to
+the sum, $s$, using {\tt vgLookup}. Which of the three square root
+functions to apply depends on the user.
+
+\[\left\lceil\sqrt{s}\right\rceil,\left\lfloor\sqrt{s}\right\rfloor,\left\lfloor0.5+\sqrt{s}\right\rfloor\]
+
+So far $\sqrt{x^2+ y^2}$ has been calculated. So to get the
+magnitude $G$, the image channels are multiplied by $a$, using
+{\tt vgColorMatrix}.
+\section{OpenVG API Wrappers}
+\label{sec-3-3}
+There are a number of convenience functions in {\tt cvpi\_vg\_ext.h} that
+wrap OpenVG functions; they do not offer additional functionality
+but may be more intuitive and cut down on code size.
+
+The functions {\tt vgConvolve} and {\tt vgSeparableConvolve} scale
+image values between 0 and 1. It would be more intuitive and
+convenient if the values ranged from 0 to 255. {\tt vgConvolveNormal}
+and {\tt vgSeparableConvolveNormal} take the same parameters as {\tt
+  vgConvolve} and {\tt vgSeparableConvolve}, but the bias
+parameter is divided by 255 before being passed to the wrapped
+function.
+
+Another problem with {\tt vgConvolve} and {\tt vgSeparableConvolve} is
+that the pixel being convolved over is in the lower left hand corner
+of the kernel instead of in the center. The functions {\tt
+  vgConvolveNoShift}, {\tt vgSeparableConvolveNoShift}, {\tt
+  vgConvolveNormalNoShift}, and {\tt vgSeparableConvolveNormalNoShift}
+move the convolved pixel to the center of the kernel by shifting in
+the $y$ up by $\left\lceil\frac{h}{2}\right\rceil$ and shifting in the
+$x$ right by $\left\lceil\frac{w}{2}\right\rceil$. If the correction is not
+done and zeros are given for the shifts, then data points in the
+resulting image will be shifted towards the image origin.
+
+The function {\tt vgColorMatrix} also scales image values between 0
+and 1.\\ {\tt vgColorMatrixNormal} allows the user to specify values
+between 0 and 255 for the bias.
+
+The function {\tt vgCreateImagePainted} acts like {\tt vgCreateImage} but
+adds four color parameters, allowing the user to create a new
+image having a solid color other than the default white.
+
+The function {\tt vgPixelBits} takes a VGImageFormat and returns the
+number of bits per pixel for that format.
+
+\subsubsection{Emacs Calc Extension}
+\label{sec-3-1-4-1}
+In the {\tt extras} directory, there is the file {\tt convolve.el}. It
+contains Emacs-Lisp Calc code to calculate convolutions, with the
+convolution kernel origin at the kernel's center pixel. The first
+argument is the image, the second the kernel, and the third is
+optional. If the third argument is omitted, then the image will be
+padded with the same value as the closest edge value. If a number is
+given, then the input matrix will be padded with the given value. This
+is useful for investigating how convolutions behave.
+
+\begin{lstlisting}
+convolve([[0,0,0,0,0],
+          [0,1,1,1,0],
+          [0,1,1,1,0],
+          [0,1,1,1,0],
+          [0,0,0,0,0]],
+         [[1,1,1],[1,1,1],[1,1,1]])
+\end{lstlisting}
+
+     \[
+%%% convolve([[0, 0, 0, 0, 0], [0, 1, 1, 1, 0], [0, 1, 1, 1, 0], [0, 1, 1, 1, 0], [0, 0, 0, 0, 0]], [[1, 1, 1], [1, 1, 1], [1, 1, 1]]) => [[1, 2, 3, 2, 1], [2, 4, 6, 4, 2], [3, 6, 9, 6, 3], [2, 4, 6, 4, 2], [1, 2, 3, 2, 1]] %%%
+ convolve\left( \begin{pmatrix} 0 & 0 & 0 & 0 &
+ 0 \\ 0 & 1 & 1 & 1 & 0 \\ 0 & 1 & 1 & 1 & 0 \\ 0 & 1 & 1 & 1 & 0 \\ 0 & 0 & 0 & 0 & 0 \end{pmatrix},
+\begin{pmatrix} 1 & 1 &
+1 \\ 1 & 1 &
+     1 \\ 1 & 1 &
+          1 \end{pmatrix} \right) \to \begin{pmatrix} 1 & 2 & 3 & 2 &
+1 \\ 2 & 4 & 6 & 4 & 2 \\ 3 & 6 & 9 & 6 & 3 \\ 2 & 4 & 6 & 4 & 2 \\ 1 & 2 & 3 & 2 & 1 \end{pmatrix}    \]
+
+     \[
+%%% convolve([[0, 0, 0, 0, 0], [0, 1, 1, 1, 0], [0, 1, 1, 1, 0], [0, 1, 1, 1, 0], [0, 0, 0, 0, 0]], [[1, 1, 1], [1, 1, 1], [1, 1, 1]], 1) => [[6, 5, 6, 5, 6], [5, 4, 6, 4, 5], [6, 6, 9, 6, 6], [5, 4, 6, 4, 5], [6, 5, 6, 5, 6]] %%%
+ convolve\left( \begin{pmatrix} 0 & 0 & 0 & 0 &
+ 0 \\ 0 & 1 & 1 & 1 & 0 \\ 0 & 1 & 1 & 1 & 0 \\ 0 & 1 & 1 & 1 & 0 \\ 0 & 0 & 0 & 0 & 0 \end{pmatrix},
+\begin{pmatrix} 1 & 1 & 1 \\ 1 & 1 & 1 \\ 1 & 1 & 1 \end{pmatrix},
+1 \right) \to \begin{pmatrix} 6 & 5 & 6 & 5 &
+6 \\ 5 & 4 & 6 & 4 & 5 \\ 6 & 6 & 9 & 6 & 6 \\ 5 & 4 & 6 & 4 & 5 \\ 6 & 5 & 6 & 5 & 6 \end{pmatrix}
+   \]
+
+
+\section{YUYV to YUVA}
+\label{sec-3-4}
+Unlike OpenCV, CVPI does not natively support camera capture; however,
+this can be achieved using a video capture API, such as Video4Linux
+(V4L). Most low-cost web cameras output to YUYV, where two horizontal
+adjacent pixels are represented by 4 bytes. Both pixels share the U
+and V channels but have different Y channels \cite{videoForLinux}. The
+function {\tt cvpi\_yuyv2yuva} splits the pixels into separate 4 byte
+blocks. This function allows the other OpenVG and CVPI functions to
+manipulate camera input; all other functions require that each pixel
+have its own separate 4 byte representation. The user must read the
+raw image data from memory into a VGImage, using CVPI's default pixel
+format VG\_sARGB\_8888, and pass it to {\tt cvpi\_yuyv2yuva}. The
+output image will be the same height, but twice the width. The alpha
+channel will be set to 255.
+
+The input image channel mapping is:
+ \[\begin{pmatrix} Y2 \\ U \\ Y1 \\ V \end{pmatrix}
+ \rightarrow
+\begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix} \]
+where, $Y1$ is the yellow channel for the first pixel and $Y2$
+is the yellow channel for the second pixel.
+
+Using the function {\tt vgColorMatrixNormal}, the input image is split into
+two different images with the channels reordered and the alpha
+channel set to the maximum value, 255.
+
+\[I_1 \gets \begin{pmatrix} 0 & 0 & 0 & 1 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 1 & 0 & 0 & 0 \end{pmatrix}
+\begin{pmatrix} Y2 \\ U \\ Y1 \\ V \end{pmatrix} + \begin{pmatrix}
+0 \\ 0 \\ 0 \\ 255 \end{pmatrix} =\begin{pmatrix} V \\ U \\ Y1 \\ 255 \end{pmatrix}\to \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix}
+\]
+
+\[I_2 \gets \begin{pmatrix} 0 & 0 & 0 & 1 \\ 0 & 1 & 0 & 0 \\ 1 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 \end{pmatrix}
+\begin{pmatrix} Y2 \\ U \\ Y1 \\ V \end{pmatrix}  + \begin{pmatrix}
+0 \\ 0 \\ 0 \\ 255 \end{pmatrix} = \begin{pmatrix}
+V \\ U \\ Y2 \\ 255 \end{pmatrix} \to \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix}
+\]
+
+The two images, $I_1$ and $I_2$, are then combined in vertical,
+1-pixel wide strips using {\tt vgCopyImage}. If the image is written
+to memory, $Y$ will be at array index 0, $U$ at index 1, $V$ at index
+2, and $A$ at index 3.
+
+\section{Color to Black and White}
+\label{sec-3-5}
+OpenVG can output to several formats including binary black and
+white, one bit per pixel.  {\tt cvpi\_image\_rgba2bw} converts an
+image channel to such an image. With {\tt vgLookup}, the
+{\tt cvpi\_binary\_array} or {\tt cvpi\_binary\_array\_inverted} is used to
+convert the desired channel to black and white, and
+{\tt cvpi\_zeros\_array} is used to convert the other channels to
+zero. {\tt vgCopyImage} is used to convert {\tt vgLookup}'s output to
+a binary image; 255 gets mapped to 1 bits and 0 gets mapped to 0 bits.
+
+\section{Image Addition and Subtraction}
+\label{sec-3-6}
+The function {\tt cvpi\_image\_add} allows the user to add and subtract
+images of same dimensions. The function is described by the
+formula:
+
+\[C_{i,j} = s\cdot(a\cdot A_{i,j} + b\cdot B_{i,j})+t\]
+
+where pixel values range between 0 and 255, $s$ is a floating point
+value, $t$ is a bias passed to {\tt vgConvolveNormal}, and $a$ and $b$
+are integers. $A$, $B$, and $C$ are images, with $i$ and $j$ being
+pixel locations. The function can perform subtraction by setting $a$
+or $b$ to a negative value.
+
+If the image height is less than or equal to half the maximum height,
+then the two images are combined into a single image by copying
+horizontal strips, 1-pixel in height into another image of twice the
+height, such that the first row is from the first image, the second
+row is from the second image, and this is repeated for all following
+rows. The resulting image is then convolved with {\tt
+  vgConvolveNormal} using a $2\byX 1$ kernel, $k$, where
+$k_{0,1} = a$ and $k_{0,0} = b$.
+
+OpenVG's convolution formula becomes:
+\[I(x,y) = s\left(\sum_{j=0}^1 k(0,1-j)\cdot P(x,y+j)\right)+t\]
+\[I(x,y) = s(k_{0,1}\cdot P(x,y) + k_{0,0}\cdot P(x,y+1))+t\]
+\[I(x,y) = s(a\cdot P(x,y) + b\cdot P(x,y+1))+t\]
+where $P$ is the input image and $I$ is the output image, with
+pixel coordinate parameters, the origin being in the lower left
+corner.
+
+{\tt vgCopyImage} is used to copy the even-indexed rows to another
+image, and the odd indexed rows are thrown out.
+
+For example, if two images $A$ and $B$, both 1-pixel wide and two
+pixels high, are to be added, the following steps are performed.
+\begin{figure}[H]
+\begin{mdframed}[style=default]
+\begin{enumerate}
+\item Combining the images:
+\begin{center}
+\begin{tabular}{cl}
+Index &\ \\
+\hline
+3 & B10\\
+2 & A10\\
+1 & B00\\
+0 & A00\\
+\end{tabular}
+\end{center}
+
+\item Convolution:
+\begin{center}
+\begin{tabular}{cl}
+Index &\ \\
+\hline
+3 & B10+Padding\\
+2 & A10+B10\\
+1 & B00+A10\\
+0 & A00+B00\\
+\end{tabular}
+\end{center}
+
+\item Removing the odd numbered rows:
+\begin{center}
+\begin{tabular}{cl}
+Index &\ \\
+\hline
+2 & A10+B10\\
+0 & A00+B00\\
+\end{tabular}
+\end{center}
+\end{enumerate}
+\end{mdframed}
+\caption{Example: Adding two $1\byX 2$ images, A and B.}
+\end{figure}
+
+For images larger in height than half the max height, the images
+are split in half, and their upper and lower halves are added
+separately. If the image height is odd, then the top rows are
+added separately from the other rows. That is, the image minus the
+top row is split in half and added like in the even case, and then
+the top rows of each image are added together.
+\begin{figure}[H]
+\begin{mdframed}[style=default]
+\begin{enumerate}
+\item Two images are created, combining image rows:
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Upper}\\
+Index &\ \\
+\hline
+3 & B30\\
+2 & A30\\
+1 & B20\\
+0 & A20\\
+\end{tabular}
+\end{center}
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Lower}\\
+Index &\ \\
+\hline
+3 & B10\\
+2 & A10\\
+1 & B00\\
+0 & A00\\
+\end{tabular}
+\end{center}
+
+\item Convolution:
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Upper}\\
+Index &\ \\
+\hline
+3 & B30+Padding\\
+2 & A30+B30\\
+1 & B20+A30\\
+0 & A20+B20\\
+\end{tabular}
+\end{center}
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Lower}\\
+Index &\ \\
+\hline
+3 & B10+Padding\\
+2 & A10+B10\\
+1 & B00+A10\\
+0 & A00+B00\\
+\end{tabular}
+\end{center}
+\item Removing the odd numbered rows and combining into a single image:
+\begin{center}
+\begin{tabular}{cl}
+Index &\ \\
+\hline
+2 & A30+B30\\
+0 & A20+B20\\
+2 & A10+B10\\
+0 & A00+B00\\
+\end{tabular}
+\end{center}
+\end{enumerate}
+\end{mdframed}
+\caption{Example: Adding two $1\byX 4$ images, A and B, where the
+  maximum allowed image height is 4.}
+\end{figure}
+\begin{figure}[H]
+\begin{mdframed}[style=default]
+\begin{enumerate}
+\item Three images are created.
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Top-row}\\
+Index &\ \\
+\hline
+1 & B40\\
+0 & A40\\
+\end{tabular}
+\end{center}
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Upper}\\
+Index &\ \\
+\hline
+3 & B30\\
+2 & A30\\
+1 & B20\\
+0 & A20\\
+\end{tabular}
+\end{center}
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Lower}\\
+Index &\ \\
+\hline
+3 & B10\\
+2 & A10\\
+1 & B00\\
+0 & A00\\
+\end{tabular}
+\end{center}
+
+\item Convolution:
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Top-row}\\
+Index &\ \\
+\hline
+1 & B40+Padding\\
+0 & A40+B40\\
+\end{tabular}
+\end{center}
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Upper}\\
+Index &\ \\
+\hline
+3 & B30+Padding\\
+2 & A30+B30\\
+1 & B20+A30\\
+0 & A20+B20\\
+\end{tabular}
+\end{center}
+\begin{center}
+\begin{tabular}{cl}
+\multicolumn{2}{c}{Lower}\\
+Index &\ \\
+\hline
+3 & B10+Padding\\
+2 & A10+B10\\
+1 & B00+A10\\
+0 & A00+B00\\
+\end{tabular}
+\end{center}
+\end{enumerate}
+\end{mdframed}
+\caption{Example: Adding two $1\byX 5$ images, A and B, where the
+  maximum allowed image height is 5. \emph{(cont.)}}
+\end{figure}
+\pagebreak
+\begin{figure}[H]
+\ContinuedFloat
+\begin{mdframed}[style=default]
+\begin{enumerate}
+\setcounter{enumi}{2}
+\item Removing the odd numbered rows and combining into a single image:
+\begin{center}
+\begin{tabular}{cl}
+Index &\ \\
+\hline
+0 & A40+B40\\
+2 & A30+B30\\
+0 & A20+B20\\
+2 & A10+B10\\
+0 & A00+B00\\
+\end{tabular}
+\end{center}
+\end{enumerate}
+\end{mdframed}
+\caption{Example: Adding two $1\byX 5$ images, A and B, where the
+  maximum allowed image height is 5.}
+\end{figure}
+\section{Channel Addition and Subtraction}
+\label{sec-3-7}
+There are three functions for adding pixel channels of the same
+image together; {\tt cvpi\_channel\_add},
+{\tt cvpi\_color\_channels\_add}, and {\tt cvpi\_all\_channels\_add}.
+These functions use {\tt vgColorMatrixNormal} to perform the adding.
+
+The function, {\tt cvpi\_all\_channels\_add}, allows the user to specify a
+scalar for each channel, which channels to output to, and separate biases
+for each output channel.
+   \[
+%%% [[R'], [G'], [B'], [A']] := [[S_R, S_G, S_B, S_A], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]] * [[R], [G], [B], [A]] + [[B_R], [0], [0], [0]] => [[(R * S_R + G * S_G + B * S_B + A * S_A + B_R)], [G], [B], [A]] %%%
+ \begin{pmatrix} R' \\ G' \\ B' \\ A' \end{pmatrix}
+          \gets \begin{pmatrix} S_R & S_G & S_B &
+ S_A \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{pmatrix}
+  \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix}
+  + \begin{pmatrix} B_R \\ 0 \\ 0 \\ 0 \end{pmatrix} \to \begin{pmatrix} R S_R + G S_G + B S_B + A S_A
+  + B_R \\ G \\ B \\ A \end{pmatrix}
+\]
+\[
+%%% [[R'], [G'], [B'], [A']] := [[S_R, S_G, S_B, S_A], [0, 1, 0, 0], [S_R, S_G, S_B, S_A], [0, 0, 0, 1]] * [[R], [G], [B], [A]] + [[B_R], [0], [B_B], [0]] => [[(R * S_R + G * S_G + B * S_B + A * S_A + B_R)], [G], [(R * S_R + G * S_G + B * S_B + A * S_A + B_B)], [A]] %%%
+ \begin{pmatrix} R' \\ G' \\ B' \\ A' \end{pmatrix}
+          \gets \begin{pmatrix} S_R & S_G & S_B &
+ S_A \\ 0 & 1 & 0 & 0 \\ S_R & S_G & S_B & S_A \\ 0 & 0 & 0 & 1 \end{pmatrix}
+  \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix}
+  + \begin{pmatrix} B_R \\ 0 \\ B_B \\ 0 \end{pmatrix} \to \begin{pmatrix} R S_R + G S_G + B S_B + A S_A
+  + B_R \\ G \\ R S_R + G S_G + B S_B + A S_A + B_B \\ A \end{pmatrix}
+\]
+The functionality is similar for {\tt cvpi\_color\_channels\_add}.
+   \[
+%%% [[R'], [G'], [B'], [A']] := [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [S_R, S_G, S_B, 0]] * [[R], [G], [B], [A]] + [[0], [0], [0], [B_A]] => [[R], [G], [B], [(R * S_R + G * S_G + B * S_B + B_A)]] %%%
+ \begin{pmatrix} R' \\ G' \\ B' \\ A' \end{pmatrix}
+          \gets \begin{pmatrix} 1 & 0 & 0 &
+ 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ S_R & S_G & S_B & 0 \end{pmatrix}
+  \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix}
+  + \begin{pmatrix} 0 \\ 0 \\ 0 \\ B_A \end{pmatrix} \to \begin{pmatrix} R \\ G \\ B \\ R S_R + G S_G
+  + B S_B + B_A \end{pmatrix}
+\]
+   \[
+%%% [[R'], [G'], [B'], [A']] := [[S_R, S_G, S_B, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]] * [[R], [G], [B], [A]] + [[B_R], [0], [0], [0]] => [[(R * S_R + G * S_G + B * S_B + B_R)], [G], [B], [A]] %%%
+ \begin{pmatrix} R' \\ G' \\ B' \\ A' \end{pmatrix}
+          \gets \begin{pmatrix} S_R & S_G & S_B &
+ 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{pmatrix}
+  \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix}
+  + \begin{pmatrix} B_R \\ 0 \\ 0 \\ 0 \end{pmatrix} \to \begin{pmatrix} R S_R + G S_G + B S_B
+  + B_R \\ G \\ B \\ A \end{pmatrix}
+\]
+
+With the function {\tt cvpi\_channel\_add}, the user selects which two
+channels to add and the output channels. The effective adding formula
+is the same as that used by {\tt cvpi\_image\_add}, but is performed
+by {\tt vgColorMatrixNormal}. If the two input channels are the same,
+then their scalars are added together.  For example, adding channel R
+with channel G and outputting to B and A, with B's bias = 0 and A's
+bias = 1.
+   \[
+%%% [[1, 0, 0, 0], [0, 1, 0, 0], [1, 1, 0, 0], [1, 1, 0, 0]] * [[1], [5], [10], [20]] + [[0], [0], [0], [1]] => [[1], [5], [6], [7]] %%%
+ \begin{pmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 1 & 1 & 0 & 0 \\ 1 & 1 & 0 & 0 \end{pmatrix}
+          \begin{pmatrix} 1 \\ 5 \\ 10 \\ 20 \end{pmatrix}
+          + \begin{pmatrix} 0 \\ 0 \\ 0 \\ 1 \end{pmatrix} \to \begin{pmatrix} 1 \\ 5 \\ 6 \\ 7 \end{pmatrix}
+\]
+
+\section{Combining Images by Channel}
+\label{sec-3-8}
+The function {\tt cvpi\_image\_combine\_channelwise} can combine two
+images, where the user selects the channels to include from one image,
+and then the complement of the selected channels are included from the
+other image in the output. The function works by using {\tt
+  vgColorMatrix} to produce two new images where excluded channels are
+zeroed. Then the two resulting images are added using {\tt
+  cvpi\_image\_add}.
+For example, given two one pixel images, with the first two
+channels from the first image and the second two channels in the
+second image are selected.
+   \[
+%%% [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]] * [[1], [2], [3], [4]] + [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]] * [[5], [6], [7], [8]] => [[1], [2], [7], [8]] %%%
+ \begin{pmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \end{pmatrix}
+          \begin{pmatrix} 1 \\ 2 \\ 3 \\ 4 \end{pmatrix}
+          + \begin{pmatrix} 0 & 0 & 0 &
+ 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 \\ 0 & 0 & 0 & 1 \end{pmatrix}
+  \begin{pmatrix} 5 \\ 6 \\ 7 \\ 8 \end{pmatrix} \to \begin{pmatrix} 1 \\ 2 \\ 7 \\ 8 \end{pmatrix}
+\]
+
+\section{Thresholding}
+\label{sec-3-9}
+CVPI contains five thresholding functions;
+{\tt cvpi\_channel\_threshold}, {\tt cvpi\_image\_threshold},
+{\tt cvpi\_channel\_threshold\_sector}, {\tt cvpi\_image\_threshold\_sector}, and
+{\tt cvpi\_image\_threshold\_adaptive\_mean}. Thresholding is used to
+filter out information within a certain value range.
+
+For {\tt cvpi\_channel\_threshold} and {\tt cvpi\_image\_threshold},
+the user specifies value ranges, whether to keep or remove pixels
+whose values are within the range while doing the opposite for those
+outside the range, and what the replacing value will be for removed
+pixels. {\tt cvpi\_image\_threshold} adds the additional option to
+specify whether channels are dependent or independent. That is, if any
+channel in a pixel falls outside the threshold range, and if the
+channels are dependent, then the pixel's channels will be removed. If they
+are independent, then a pixel channel is kept or removed regardless of
+whether the other channels were within the threshold range.
+
+The {\tt cvpi\_channel\_threshold} function works by building an array to
+pass to {\tt vgLookup}. For channels that are not thresholded, their
+{\tt vgLookup} functions are set to the identity function array.
+
+The functions {\tt cvpi\_channel\_threshold\_sector} and {\tt
+  cvpi\_image\_threshold\_sector} threshold a channel or image in
+sectors or blocks. The user must pass in a function that is used to
+compute a statistic, such as the average, about the sector and the
+statistic is used as the upper bound for masking or not masking,
+depending on what the user specifies. The lower bound is zero. The
+image is divided into {\tt vgChildImage} sectors. If the height or
+width does not divide evenly, then their are additional sectors around
+the upper and right edges, whose width or height are the modulo of the
+image and sector dimensions.
+
+The function {\tt cvpi\_image\_threshold\_adaptive\_mean} adaptively
+thresholds an image by using {\tt vgConvolveNormalNoShift} to find the
+local mean for each pixel. The user specifies the $N\byX N$
+kernel size. Each kernel element has the value 1. The scale is
+$\left(\frac{1}{N}\right)^2$.  If the user wants to keep pixels
+greater than the convolution results, then the resulting image from the
+convolution gets subtracted from the original image. Else, if the
+user wants to keep pixels less than the convolution results, the
+original image gets subtracted from the image resulting from the
+convolution. The user can also specify an integer bias, which is
+passed to {\tt cvpi\_image\_add} as the bias parameter when finding the
+difference between the images. Image values are saturated between 0
+and 255, so negative values become zero and values above 255
+become 255. The image resulting from the difference can be used as
+a mask on the original image; values that are zero are pixels that
+are to be removed by the threshold. To create the masking image,
+values in the difference image are mapped to 0 if they are
+non-zero, and mapped to 255 if they are zero. If the user wants
+removed pixels to be shown in white, then the mask is added to the
+original image; else if the user wants removed pixels to be shown
+in black, then the mask is subtracted from the original image.
+If the user wants the image channels to be dependent on each-other;
+that is, only keep those pixels where all of the channels survive
+thresholding, then the mean image is split into four separate
+images, one for each color channel. The resulting images are then
+AND'ed together (see section \ref{sec-3-12}) and then turned into the
+masking image.
+
+\section{Masking}
+\label{sec-3-10}
+Masking one image with another can be accomplished easily with
+{\tt cvpi\_image\_add}, by setting the masking pixels to 255 and the
+non-masking pixels to 0, and then subtracting it from or adding it
+to the image being masked. However, the user might want to keep
+masking information inside an image channel, such as the alpha
+channel. The function, {\tt cvpi\_image\_mask\_channel}, adds or subtracts
+a channel from the other image channels using {\tt vgColorMatrix}. It
+is assumed that the masking channel is already set to the correct
+values.
+
+If alpha is the masking channel and the mask is being added, then:
+\[
+\begin{pmatrix} 1 & 0 & 0 & 1 \\ 0 & 1 & 0 & 1 \\ 0 & 0 & 1 & 1 \\ 0 & 0 & 0 & 1 \end{pmatrix}
+  \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix} \to \begin{pmatrix} R + A \\ G + A \\ B + A \\ A \end{pmatrix}
+\]
+   If red is the masking channel and the mask is being subtracted, then:
+   \[\begin{pmatrix} 1 & 0 & 0 & 0 \\ -1 & 1 & 0 & 0 \\ -1 & 0 & 1 & 0 \\ -1 & 0 & 0 & 1 \end{pmatrix}\begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix} \to \begin{pmatrix} R \\ G - R \\ B - R \\ A - R \end{pmatrix}
+\]
+
+\section{Statistics}
+\label{sec-3-11}
+CVPI contains some statistical operations. Statistical operations,
+being reduction type operations, cannot really utilize the
+GPU. However, some mapping functions, such as thresholding, require
+results from statistical operations.
+\subsection{Average}
+\label{sec-3-11-1}
+CVPI provides two averaging functions; {\tt
+  cvpi\_image\_mean\_arithmetic} and {\tt cvpi\_image\_mean\_gpu}.
+{\tt cvpi\_image\_mean\_arithmetic} computes the arithmetic mean for
+each channel. This operation is performed entirely on the CPU. The
+function is not heavily optimized and could be improved on ARM CPUs
+supporting NEON SIMD. {\tt cvpi\_image\_mean\_gpu} uses convolution in
+a way similar to {\tt cvpi\_image\_add} by averaging vertically
+adjacent pixels until the resulting image is one pixel high. The image
+is reduced in height by 1 for each iteration. A one-pixel image is
+produced by averaging horizontally adjacent pixels in the one-pixel
+high image.  The resulting value is not a true statistic but is close
+to the average. The exact average is not always desired in computer
+vision and something like it may be good enough. The function has a
+parameter to limit the number of iterations, returning an image with
+dimensions: (input width) $\times$ ((height -- number of iterations)
+or (1, if height -- number of iterations $\le 0$)).
+
+\subsection{Channel to Data}
+\label{sec-3-11-2}
+The function {\tt vgGetImageSubData}, returns the data for an entire
+image \cite{openvg}. {\tt cvpi\_channel2data} returns the data for
+just a single channel. The function works by reordering the channels
+so that the desired data is in the alpha channel using {\tt
+  vgColorMatrix}. The image is then copied to an image of type
+VG\_A\_8. This will discard the non-alpha channels, and then the alpha
+image is written to memory.
+
+    \[
+%%% [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]] * [[R], [G], [B], [A]] => [[0], [0], [0], [R]] %%%
+ \begin{pmatrix} 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 1 & 0 & 0 & 0 \end{pmatrix}
+          \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix} \to \begin{pmatrix} 0 \\ 0 \\ 0 \\ R \end{pmatrix}
+\]
+
+    \[
+%%% [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 1, 0, 0]] * [[R], [G], [B], [A]] => [[0], [0], [0], [G]] %%%
+ \begin{pmatrix} 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \end{pmatrix}
+          \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix} \to \begin{pmatrix} 0 \\ 0 \\ 0 \\ G \end{pmatrix}
+\]
+    \[
+%%% [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 1, 0]] * [[R], [G], [B], [A]] => [[0], [0], [0], [B]] %%%
+ \begin{pmatrix} 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 0 & 0 \\ 0 & 0 & 1 & 0 \end{pmatrix}
+          \begin{pmatrix} R \\ G \\ B \\ A \end{pmatrix} \to \begin{pmatrix} 0 \\ 0 \\ 0 \\ B \end{pmatrix}
+\]
+
+\subsection{Max and Min}
+\label{sec-3-11-3}
+CVPI has three functions for determining a channel's minimum and
+maximum values; {\tt cvpi\_channel\_max}, {\tt cvpi\_channel\_min}, and
+{\tt cvpi\_channel\_max\_min}. All three functions pass the input image
+and channel specifier to {\tt cvpi\_channel2data}, and then use
+sequential searches.
+
+\subsection{Histogram and Cumulative Distribution}
+\label{sec-3-11-4}
+{\tt cvpi\_channel\_histogram}, {\tt cvpi\_color\_\-channels\_histogram}, and
+{\tt cvpi\_image\_histogram} create arrays in memory where the index
+represents an 8-bit color value, and the index entry represent the
+number of times that value occurs in an image.
+{\tt cvpi\_channel\_histogram}'s data array can represent one of four
+channels: red, green, blue, or
+alpha. {\tt cvpi\_color\_\-channels\_histogram}'s data is an array of 768
+elements where the first 256 elements represent red values, then
+next 256 elements represent green values, and the last 256
+elements represent blue values. {\tt cvpi\_image\_histogram} adds
+another 256 entries, after the blue entries, for the alpha channel
+values. This way channel data is kept contiguous and the data
+format is consistent between these functions.
+
+The functions {\tt cvpi\_channel\_\-cumulative\_\-distribution}, {\tt
+  cvpi\_color\_\-channels\_\-cumulative\_\-distribution}, and {\tt
+  cvpi\_image\_\-cumulative\_distribution}, take the respective
+outputs of {\tt cvpi\_channel\_histogram}, {\tt
+  cvpi\_color\_\-channels\_histogram}, and {\tt
+  cvpi\_image\_histogram}, and return the same type of data
+structures, except that it is a cumulative distribution. This can be
+used for histogram equalization. Each entry is computed using the
+formula:
+
+\[c(I) = \frac{1}{N}\sum_{i=0}^Ih(i)\]
+where $h(i)$ is the value computed by the corresponding histogram
+function \cite[p.~95]{Szeliski}.
+
+These functions are used by {\tt cvpi\_channel\_\-histogram\_equalization},
+{\tt cvpi\_color\_\-channels\_\-histogram\_equalization}, and
+{\tt cvpi\_image\_\-histogram\_equalization} to create histogram equalized
+images. First, the histogram $h(i)$, and then the cumulative
+distribution $c(I)$ are computed. The output of the cumulative
+distribution function is converted to a VGubyte array. If the user
+wants the array values scaled from 0 to 255, then the $c(I)$ array
+is re-scaled using the formula
+
+\[h(v)=\mathrm{round}\left(\frac{cdf(v)- cdf_{min}}{(M\cdot N) - cdf_{min}}\cdot 255\right)\]
+
+where $M$ and $N$ are the image dimensions, and $cdf_{min}$ is the
+smallest positive value in the cumulative distribution
+\cite{wiki:HistogramEqualization}. The $c(I)$ array is then passed to
+{\tt vgLookup}. For channels not being operated on, the identity array
+is given.
+
+\section{Histogram Equalization}
+CVPI has three histogram equalization functions; {\tt
+  cvpi\_channel\_\-histogram\_equalization}, {\tt
+  cvpi\_color\_\-channels\_\-histogram\_equalization}, and {\tt
+  cvpi\_image\_\-histogram\_equalization}; and their sector
+counterparts; {\tt cvpi\_channel\_\-histogram\_equalization\_sector},
+{\tt cvpi\_color\_\-channels\_\-histogram\_equalization\_sector}, and
+{\tt cvpi\_image\_\-histogram\_equalization\_sector}. The first three
+functions use the same histogram and cumulative distribution statistic
+for the entire image. The latter three functions partition the image,
+similar to {\tt cvpi\_channel\_threshold\_sector} and {\tt
+  cvpi\_image\_threshold\_sector}, and apply their image-wide
+counterparts to the sub-images. Adaptive histogram equalization is
+not implemented.
+
+\section{Logic Operations}
+\label{sec-3-12}
+CVPI can perform all binary logical operations: AND, NAND, OR, NOR,
+XOR, XNOR, complement ($\backslash$), inverse complement. The complement operation
+is the same as $A\&!B$.
+\begin{center}
+\begin{tabular}{cccccccccc}
+A & B &  AND & OR & $A\backslash B$ & XOR & $!(A\backslash B)$ & NOR & XNOR & NAND\\
+\hline
+0 & 0 &   0 & 0 & 0 & 0 &  1 & 1 &  1   & 1\\
+0 & 1 &   0 & 1 & 0 & 1 &  1 & 0 &  0   & 1\\
+1 & 0 &   0 & 1 & 1 & 1 &  0 & 0 &  0   & 1\\
+1 & 1 &   1 & 1 & 0 & 0 &  1 & 0 &  1   & 0\\
+\end{tabular}
+\end{center}
+For two inputs, there are 16 possible operations The operations
+$B\backslash A$ and $!(B\backslash A)$ can be achieved by reversing
+the inputs. Operations that result in A, B, {\bf 1}, or {\bf 0} are
+tautological. The NOT operator is the same as applying the inversion
+array with {\tt vgLookup}.
+
+\begin{figure}[H]
+\begin{mdframed}[style=default]
+\begin{enumerate}
+\item Allow the user to specify what values true and false outputs will
+be mapped to; TC and FC. The user can specify, for the input
+images, whether 0 maps to true and !0 maps to false, or the
+opposite.
+\item Set all of A's pixels to 1's (TRUE) and 0's (FALSE).
+\item Set all of B's pixels to 2's (TRUE) and 0's (FALSE).
+\item Add the images.
+\item Where TC = TRUE and FC = FALSE, use {\tt vgLookup} to:
+\begin{description}
+\item[{AND (intersection)}] set all 3's to TC and non-3's to FC.
+\item[{NAND}] set all 3's to FC and non-3's to TC.
+\item[{OR (union)}] set all 0's to FC and non-0's to TC.
+\item[{NOR}] set all 0's to TC and non-0's to FC.
+\item[{XOR (symmetric difference)}] set all 1's and 2's to TC and the rest to FC.
+\item[{XNOR}] set all 1's and 2's to FC and the rest to TC.
+\item[{COMPLEMENT (relative)}] set all 1's to TC and the rest to FC.
+\item[{INV. COMPLEMENT}] set all 1's to FC and the rest to TC.
+\end{description}
+\end{enumerate}
+\end{mdframed}
+\caption{Algorithm for performing binary logical operations on images.}
+\end{figure}
+
+\section{Morphology}
+\label{sec-3-13}
+CVPI provides five morphology functions; {\tt cvpi\_image\_dilate},
+{\tt cvpi\_image\_\-erode}, {\tt cvpi\_image\_\-hit\_miss}, {\tt cvpi\_image\_thin}, and
+{\tt cvpi\_image\_thicken}. These functions treat non-zero values as true
+and zero values as false, or the opposite if the user specifies
+it; so input images are essentially treated as binary images. Like
+the logic functions, the output is an image consisting of two-value
+channels, one color being mapped to zero valued elements and
+another color being mapped to non-zero valued
+elements.
+
+Assuming that the user chooses non-zero values as true,
+{\tt cvpi\_image\_dilate} causes non-zero regions to
+expand. {\tt cvpi\_image\_erode} causes non-zero regions to retract;
+i.e. causes zero regions to expand. {\tt cvpi\_image\_\-hit\_miss} detects
+corners. {\tt cvpi\_image\_thin} and {\tt cvpi\_image\_thicken} are similar to
+{\tt cvpi\_image\_erode} and {\tt cvpi\_image\_dilate} but rely on
+{\tt cvpi\_image\_\-hit\_miss}.
+
+For each of these functions, given an image of zeros and non-zeros,
+if non-zero values are true, then non-zero values are mapped to 1
+and zero is mapped to 0, else the opposite will be done. A
+$3\byX 3$ binary convolution kernel is then mapped over the output \cite[Morphology]{HIPR2}.
+\subsection{Dilation and Erosion}
+\label{sec-3-13-1}
+The convolution kernel for dilation and erosion is
+\[%%% [[1, 1, 1], [1, 1, 1], [1, 1, 1]] %%%
+\begin{pmatrix} 1 & 1 & 1 \\ 1 & 1 & 1 \\ 1 & 1 & 1 \end{pmatrix}\]
+
+The input image is converted to ``binary'', and the kernel is applied
+\cite[Morphology]{HIPR2}. True values are mapped to the true color,
+and false values are mapped to the false color. {\tt
+  cvpi\_image\_erode} uses {\tt cvpi\_image\_dilate} with the false
+color and true color switched; and with non-zero equal to false and
+zero equal to true if the user specified non-zero equal to true, else
+the other way around if the user specified zero equal to true. Erosion
+is essentially dilation with the binary input values flipped.
+
+\subsection{Thinning, Thickening, and the Hit-and-Miss Transform}
+\label{sec-3-13-2}
+The hit-and-miss transform uses four different convolution
+kernels:
+\[\begin{pmatrix} 0 & 1 & 0 \\ 0 & 1 & 1 \\ 0 & 0 & 0\end{pmatrix},
+\begin{pmatrix} 0 & 0 & 0 \\ 0 & 1 & 1 \\ 0 & 1 & 0\end{pmatrix},
+\begin{pmatrix} 0 & 0 & 0 \\ 1 & 1 & 0 \\ 0 & 1 & 0\end{pmatrix},
+\begin{pmatrix} 0 & 1 & 0 \\ 1 & 1 & 0 \\ 0 & 0 & 0\end{pmatrix}\] The
+input image, after being converted to ``binary'', is convolved with
+each of these kernels, returning four different images, and then the
+outputs are or-ed together \cite[Morphology]{HIPR2}.
+
+For thinning and thickening, a hit-and-miss transform is performed on
+the input image. In the thinning function, the logical complement
+function is taken between the original image and the image returned by
+the hit-and-miss transform. In the thickening function, the logical OR
+function is taken between the original image and the image returned by
+the hit-and-miss transform \cite[Morphology]{HIPR2}.
+
+\section{Data Points}
+\label{sec-3-14}
+Once the GPU has removed extraneous information from an image, the
+remaining data likely needs to be processed by the CPU. Often it is
+the remaining pixel coordinates and not the pixel values that are
+desired. With the function {\tt cvpi\_image\_coordinate\_table},
+CVPI can return a coordinate table for the CPU to operate on.  The
+user can specify whether the origin is in the upper or
+lower left corner. {\tt cvpi\_image\_coordinate\_table} outputs the
+input image to memory and uses the CPU to create a table of non-zero
+pixels. The user can specify which channels to check for non-zero
+data, unspecified channels are ignored.  The function assumes that the
+image format being used has its origin in the upper left corner, so to
+switch the origin to the lower left corner, it subtracts the $y$
+coordinate from the image height. The function assumes that every
+pixel could be non-zero, so sufficient space is allocated on the
+heap to have a coordinate entry for every image pixel. The coordinate
+data is represented by a union of a 32 bit unsigned integer with a two
+element array of 16 bit unsigned integers, with the first element
+representing the $x$ coordinate and the second, the $y$
+coordinate. {\tt cvpi\_image\_coordinate\_table} returns a structure
+consisting of a pointer to an array of coordinates and the length the
+array. If not all of the allocated memory is used then the memory
+allocation is reduced to fit the coordinate table data.
+
+\section{YUVA to RGBA}
+\label{sec-3-15}
+Currently, there are no image formats that support YUVA, so the
+image must be converted for human viewing.  RGBA is commonly
+supported. This conversion must be done on the CPU.
+The function {\tt cvpi\_avuy2argb} converts an image in CPU memory to an
+RGBA image in memory. The function {\tt cvpi\_image2argb} is a simple
+wrapper around {\tt cvpi\_avuy2argb} that takes a VGImage, writes it
+to memory, and calls {\tt cvpi\_avuy2argb} on it.
+\begin{figure}[H]
+\begin{mdframed}[style=default]
+\begin{lstlisting}
+C = Y - 16
+D = U - 128
+E = V - 128
+
+R = clip((298 * C           + 409 * E + 128) >> 8)
+G = clip((298 * C - 100 * D - 208 * E + 128) >> 8)
+B = clip((298 * C + 516 * D           + 128) >> 8)
+\end{lstlisting}
+\end{mdframed}
+\caption{Algorithm for converting YUV to RGB \cite{yuv2rgb}.}
+\end{figure}
+\chapter{Logging}
+\label{sec-5}
+OpenVG has error logging. Errors can be returned using {\tt
+  vgGetError()}. However, it is not possible to create new VG errors,
+so CVPI uses its own error logging facilities.
+
+CVPI provides logging functions. The user can compile CVPI to write
+logs synchronously with {\tt fprintf}, asynchronously using POSIX
+threads, or not at all. The log writing location can be changed with
+{\tt cvpi\_log\_file\_set} and returned using {\tt cvpi\_log\_file\_get}. The
+default location is {\tt stderr}. If the user wants to log to a file,
+then {\tt cvpi\_log\_file\_set} must be used at the beginning of the
+program and {\tt cvpi\_log\_file\_unset} at the end of the program. CVPI
+provides seven logging functions; {\tt cvpi\_log}, {\tt cvpi\_log\_1},
+{\tt cvpi\_log\_2}, {\tt cvpi\_log\_3}, {\tt cvpi\_log\_4}, {\tt cvpi\_log\_5}, and
+{\tt cvpi\_log\_6}, though {\tt cvpi\_log} is not intended for direct use. The
+six numbered logging functions have corresponding formatting
+functions; {\tt cvpi\_log\_format\_1}, {\tt cvpi\_log\_format\_2},
+{\tt cvpi\_log\_format\_3}, {\tt cvpi\_log\_format\_4}, {\tt cvpi\_log\_format\_5}, and
+{\tt cvpi\_log\_format\_6}. This is used to standardize log formatting and
+allow different log strings to be passed to a POSIX thread when
+performing asynchronous logging. POSIX threads can only take a
+single argument that is normally a pointer. The logging thread is
+passed a pointer to a structure containing the log format type,
+which tells the thread what other structure parameters are to be
+printed. The structure contains an {\tt fprintf} formatting string, plus
+the arguments to the string. The log type tells the thread what
+structure elements to pass to {\tt fprintf}. The logging thread is
+detached after being created.
+
+\chapter{Image Headers}
+\label{sec-7}
+CVPI has functions for writing image headers for Portable Bitmap
+(PBM), Portable Graymap (PGM), and Bitmap (BMP). The PBM and PGM
+functions, {\tt cvpi\_pbm\_header\_write} and {\tt
+  cvpi\_pgm\_header\_write}, are wrappers around {\tt fprintf}, which
+write to the specified file. The BMP functions, {\tt
+  cvpi\_bmp\_header\_alloc}, {\tt cvpi\_bmp\_header\_write}, and {\tt
+  cvpi\_bmp\_header\_alloc\_write}, create a bitmap version 4 header structure
+in heap memory and write it to the specified file.
+
+All bitmap header elements are type {\tt uint32\_t}, {\tt int32\_t},
+{\tt uint16\_t}, or {\tt int8\_t}, and it is 122 bytes long
+\cite{BITMAPV4HEADER}. CVPI has support for multiple pixel encodings;
+{\tt RGB\_565}, {\tt BGR\_565}, {\tt XRGB\_8888}, {\tt XBGR\_8888},
+{\tt ARGB\_8888}, {\tt BGRA\_8888}, and {\tt RGBA\_8888}, where the
+letters specify the channels and the numbers specify the number of
+bits per channel. CVPI's {\tt cvpi\_avuy2argb} function requires {\tt
+  ARGB\_8888}. {\tt CVPI\_BMP\_DEFAULT} macro specifies the correct
+header type. Again, this has only been tested on a little endian
+system and might not produce correct results on a big endian system.
+
+\chapter{Video4Linux}
+\label{sec-4} 
+CVPI has a set of functions for starting, stopping, and getting data
+from a camera. These functions can be found in {\tt
+  cvpi\_camera\_setup.h} and {\tt cvpi\_camera\_setup.c} in the {\tt
+  tests} directory. {\tt cvpi\_camera\_setup.c} is based off of the
+file {\tt capture.c.xml}, which can be found in the Video4Linux system
+documentation. {\tt cvpi\_camera\_setup.h} has four functions; {\tt
+  cvpi\_camera\_create}, {\tt cvpi\_camera\_start}, {\tt
+  cvpi\_camera\_read\_frame}, and {\tt cvpi\_camera\_takedown}.
+Camera capture itself is outside the scope of CVPI, but it is necessary
+for using CVPI in many computer vision applications.
+
+{\tt cvpi\_camera\_create} requires the camera's width, height, and
+format, as well as the number of image buffers to allocate in which to
+dump raw image data. The function returns a structure on the heap that
+gets passed to {\tt cvpi\_camera\_start}, which starts the camera,
+turning on the camera light if it has one. To act on camera input, the
+function {\tt cvpi\_camera\_read\_frame}, runs a given function on the
+captured image. The function {\tt cvpi\_camera\_takedown}, stops the
+camera and frees the camera information. Use the command line function
+{\tt v4l2-ctl --all} to get information about what cameras are on the
+system, and {\tt v4l2-ctl --list-formats-ext} to get information about
+supported image formats and dimensions.
+
+\chapter{Building}
+\label{sec-8}
+The project currently only builds using SCons. The current SCons build
+is no more flexible than the original Makefile build; however, the
+SCons build can be further improved and made more portable. SCons has
+the full power of Python built in. SCons can also support
+non-Unix-like systems such as Windows Mobile, something which GNU
+Autotools cannot do easily \cite{whySCons}. Building with SCons is
+nearly as easy as building with Make. Unfortunately, SCons has its own
+shortcomings, not shared by Autotools or CMake
+\cite{gentooSCons}. Autotools, CMake, and make cannot be used for the
+same project; however, SCons can be used with those build systems
+without interference, so it is likely that CVPI will continue to have
+two build systems, one SCons and the other Autotools or CMake.
+
+\section{Compiler Options}
+CVPI has two levels of logging and three kinds of logging. CVPI must
+be recompiled to switch between these. The C pre-processor variable
+{\tt CVPI\_CAREFUL} if equal to 1 causes CVPI to check the return
+values of all OpenVG commands with {\tt vgGetError}. Without it, only
+commands that necessarily have to allocate GPU memory are checked,
+though every OpenVG command could potentially cause a memory error
+\cite[p.~29]{openvg}. If {\tt CVPI\_LOGGING} is set to 2, then logging
+is done asynchronously; if it is set to 1, then logging is done
+synchronously; else no logging is performed. CVPI could be built in
+different directories with different logging settings and then the
+client code linked depending on the user's needs. Little or no logging
+makes the system harder to debug but reduces or removes the overhead
+incurred by logging.
+
+CVPI contains some inline assembly with alternative C code. To use the
+assembly code, set {\tt CVPI\_ASSEMBLY} to 1.
+
+There is also code specific to Broadcom's EGL API that is necessary
+for EGL to run on the Raspberry~Pi. To enable the code, set
+the pre-compiler variable {\tt HAVE\_BCM\_HOST} to 1.
+
+\chapter{Using CVPI}
+To use EGL, OpenVG, and CVPI, headers must be included in the correct
+order. Simply including {\tt cvpi.h} should prevent such errors. The
+EGL and OpenVG headers will be pulled in with it.
+
+There are a few parameters common to many of OpenVG's image functions
+that for CVPI to work correctly, must be set to certain values. The
+parameters are {\tt outputLinear}, {\tt outputPremultiplied}, and {\tt
+  allowedQuality}.  The parameter {\tt outputLinear} must always be
+{\tt OUTPUT\_LINEAR}. The parameter {\tt outputPremultiplied} must
+always be {\tt VG\_FALSE}. The parameter {\tt allowedQuality} must
+always be {\tt VG\_IMAGE\_QUALITY\_NONANTIALIASED}. When creating an
+image for use by a CVPI function, use {\tt CVPI\_COLOR\_SPACE}.
+
+For creating and destroying a new EGL instance, CVPI provides a simple
+method of doing so. In the following code in Figure~\ref{eglcreate}, {\tt
+  cvpi\_egl\_surface\_pixmap\_native\_creator} and {\tt
+  cvpi\_egl\_surface\_pixmap\_native\_destroyer} are names of user provided
+functions, see Figure~\ref{surfacepixmap}. These functions are system
+dependent. The code creates an EGL instance able to run CVPI on the
+Raspberry~Pi.
+
+\begin{figure}[H]
+  \begin{lstlisting}[frame=single, basicstyle=\footnotesize]
+cvpi_egl_settings settings = cvpi_egl_settings_create();
+
+settings->surface_pixmap_create_function
+          = cvpi_egl_surface_pixmap_native_creator;
+settings->surface_pixmap_destroy_function
+          = cvpi_egl_surface_pixmap_native_destroyer;
+settings->renderable_api = cvpi_egl_renderable_api_openvg;
+settings->current_surface_type = cvpi_egl_surface_type_pixmap;
+/* additional settings may be required ... */
+cvpi_egl_instance instance = cvpi_egl_instance_setup(settings);
+
+/* OpenVG/CVPI code */
+
+cvpi_egl_instance_takedown(instance);
+free(settings);
+\end{lstlisting}
+  \caption{Creating and taking down an EGL instance using CVPI's interface.}
+  \label{eglcreate}
+\end{figure}
+
+\begin{figure}[H]
+\begin{lstlisting}[frame=single, basicstyle=\footnotesize]
+/* the surface_pixmap_create_function function pointer type */
+typedef EGLNativePixmapType (*pixmap_function_pointer)(cvpi_egl_instance);
+
+/* function for surface_pixmap_create_function function pointer */
+EGLNativePixmapType
+cvpi_egl_surface_pixmap_native_creator(cvpi_egl_instance egl_instance)
+{
+  cvpi_egl_settings egl_settings_p = egl_instance->egl_settings;
+
+  EGLint* pixmap_id = malloc(sizeof(*pixmap_id) * 5);
+  if(pixmap_id == NULL) {
+    return NULL;
+  }
+
+  pixmap_id[0] = 0;
+  pixmap_id[1] = 0;
+  pixmap_id[2] = egl_settings_p->width;
+  pixmap_id[3] = egl_settings_p->height;
+  pixmap_id[4] = egl_settings_p->pixel_format
+                 | egl_settings_p->pixel_format_brcm;
+
+  EGLint stride = cvpi_egl_bytes_per_pixel(egl_settings_p->pixel_format)
+                                           * egl_settings_p->width;
+  eglCreateGlobalImageBRCM(egl_settings_p->width, egl_settings_p->height,
+			   pixmap_id[4], NULL, stride, pixmap_id);
+  if(!(pixmap_id[0]) && !(pixmap_id[1])) {
+    if(pixmap_id != NULL) {
+      free(pixmap_id);
+    }
+    return NULL;
+  }
+  egl_instance->native_data = pixmap_id;
+  return pixmap_id;
+}
+
+/* function for surface_pixmap_destroy_function function pointer */
+EGLBoolean
+cvpi_egl_surface_pixmap_native_destroyer(cvpi_egl_instance egl_instance)
+{
+  if(egl_instance->native_data != NULL) {
+    EGLBoolean retval = EGL_TRUE;
+    if(!eglDestroyGlobalImageBRCM(egl_instance->native_data)) {
+      fprintf(stderr, "eglDestroyGlobalImageBRCM returned EGL_FALSE.\n");
+      retval = EGL_FALSE;
+    }
+    free(egl_instance->native_data);
+    egl_instance->native_data = NULL;
+    return retval;
+  } else {
+    return EGL_FALSE;
+  }
+}
+\end{lstlisting}
+  \caption{Raspberry~Pi surface pixmap functions.}
+  \label{surfacepixmap}
+\end{figure}
+\chapter{Sample Program}
+The directory {\tt tests} contains a sample motion detection program
+called {\tt cvpi\_sample\-\_motion\_detection}. There are two wrapper
+shell scripts, {\tt cvpi\_sample\-\_motion\_detection\-\_data.sh} and
+{\tt cvpi\_sample\-\_motion\_detection.sh}. The former program gathers
+frames per second performance data at different resolutions. The
+latter program is for user interaction, allowing the user to select
+the resolution and number of frames to capture.
+
+{\tt cvpi\_sample\-\_motion\_detection} uses Video4Linux to capture
+image data from a web camera. The image data returned from the camera
+is in YUYV format. CVPI converts the image from YUYV to YUVA. The
+function {\tt cvpi\_image\_add} is used to subtract the current
+captured image from the previously captured image, and also subtract
+the previously captured image from the current captured image. The two
+resulting images are OR'ed together using {\tt
+  cvpi\_image\_logical\_or} with non-zero channel values set to 0 and
+zero channel values set to 255. The resulting image is subtracted from
+the captured image, so that values that did not change between frames
+are zeroed and new values are kept. This image is then output to a
+file. The file output is done asynchronously using a separate thread.
+
+Data was gathered using {\tt
+  cvpi\_sample\-\_motion\_detection\-\_data.sh}, but the data was somewhat
+scattered. The program was run in an ssh terminal at run-level 3,
+without the X.Org server running, so there was little else
+running. Time samples were taken both inside and outside the program's
+image capture and processing loop, with the lesser of the two samples
+taken as the frame rate.  The average frame rate for all resolutions
+tested was 17.9~fps with a standard deviation 5.9, and a maximum of
+frame rate of 30.3~fps and a minimum of 12.1~fps. There was no real
+correlation between the resolution and the frame rate. The result
+could be due to the lack of a real time clock, the lack of a real time
+operating system, or value overflow. Still, I think that the numbers
+are not entirely inaccurate, and that you could expect process at around 16
+to 18fps on average in simple vision applications.
+
+\chapter{Bindings}
+\label{sec-9}
+CVPI is written entirely in C so it should not be too difficult to
+create bindings in other languages. Currently there are bindings being
+written for Chicken Scheme and C++ as part of CVPI. There are already
+Java and Python bindings for OpenVG \cite{rPiVid}. Chicken Scheme's compiler
+translates scheme to C code that then gets passed to a C
+compiler \cite{chicken}. Making bindings in Chicken Scheme for C functions and
+variables is quite easy. Scheme has the advantage of a more powerful
+macro language and can be faster to write.
+
+While C++ can use OpenVG and CVPI directly, but doing so does not allow
+for use of C++ exception handling and memory management, so class
+interfaces to OpenVG and CVPI were created.
+
+The incentive for creating bindings as part of the project was due to
+the size of the test code written in C and the amount of time spent
+debugging it. Lisp was my natural choice. Lisp's macro system allows
+code to be concise; common patterns that cannot be turned into
+functions can be rolled into macros. Chicken Scheme has both Scheme
+and Lisp-like macros systems. Traditional lisp macros can be written
+with minor changes using {\tt ir-macro-transformer} and {\tt
+  er-macro-transformer}, the former which implicitly renames variables
+to prevent variable capture \cite[./man/4/Macros]{chicken}.
+
+\chapter{Tests}
+\label{sec-10}
+Currently, there is a single testing program that gets compiled by
+SCons in the {\tt tests} directory called {\tt cvpi\_tests}. The main
+file, {\tt cvpi\_tests.c}, runs a list of test functions. A test
+returns a CVPI\_BOOL value, and the test function name and its return
+value are printed. Some of the tests check that the output is correct
+but a number currently only check that the function runs.
+
+I plan to move further testing to Chicken Scheme, and only use C for
+testing that a function runs. Chicken Scheme's macro system should
+make for smaller test code and it should be easier to do file IO in
+Chicken than in C. The Chicken code will certainly introduce new bugs,
+so it cannot completely replace testing in C.
+
+\chapter{Coding Conventions}
+\label{sec-11}
+\section{Naming}
+\label{sec-11-1}
+All global CVPI function and variable names start with cvpi. This is
+meant to serve the same role as a name-space. Following the name-space
+is the the object type, and then the action. Actions are verbs
+followed by adverbs. Object types are nouns followed by
+adjectives. While this scheme does produce odd names from an English
+speaking perspective, but it creates a logical classification system where
+the type is primary and action is secondary. Words are separated by
+underscores. Common CVPI object type names are {\tt channel}, {\tt
+  color\_channels}, and {\tt image}. Channel functions only act on
+one or two channels. {\tt color\_channel} functions act on the
+color channels, and image functions act on all four channels.
+
+Conversion functions are named such that a `2' separates the two
+types.
+
+OpenVG extensions follow OpenVG's naming convention of `vg'
+followed by the rest of the name in camel case.
+
+Constant macros are in all caps. General purpose function macros are
+written in lower case. Boolean values and tests are in upper
+case. Enumerations are in lower case. All structure and unions are
+type-defined or have type-defined pointers to them.
+\section{Code Structure}
+\label{sec-11-2}
+The overall CVPI project structure follows the GNU coding standards
+required by GNU Autotools \cite{gnuSTD}.
+
+All functions that allocate data on the heap or in GPU memory have a
+function local jump point for freeing memory. Every function has its
+own definition of the macro {\tt TAKEDOWN}, and every function has the
+variable {\tt BADSTATE}. This is used to implement a kind of function
+level deconstructor. At the beginning of the function, all heap
+pointers are initialized to NULL, return values are initialized, and
+all OpenVG ``objects'' are set to VG\_INVALID\_HANDLE. After every
+OpenVG function, {\tt vgGetError} is called; and after every heap
+memory allocation, the return value to checked for NULL. If memory is
+freed outside of TAKEDOWN, the variable is set to NULL or
+VG\_INVALID\_HANDLE. If an error value is returned, BADSTATE is set to
+true and the function jumps into its TAKEDOWN code. If a memory
+variable is non-NULL, it is freed, and if BADSTATE is true, then the
+return value is set to the function's error return value, which is
+VG\_INVALID\_HANDLE for functions that return VGImage's, NULL for
+functions that return heap pointers, or else it is function
+specific. The pre-compiler condition {\tt CVPI\_CAREFUL} allows the
+user to turn off error checking of OpenVG functions that do not
+necessarily involve memory allocation. According to the OpenVG
+specification, every OpenVG function can throw a memory error;
+however, memory errors are likely to only come from {\tt
+  vgCreateImage} and {\tt vgDestroyImage}, and checking for errors
+after every OpenVG call can needlessly slow down program execution.
+
+All included headers are surrounded by {\tt ifndef} include guards. All
+header files, if defined more than once, will print a compiler
+message.
+
+\section{Optimization}
+\label{sec-11-3}
+The code is written with the target platform being the ARMv6
+CPU. Where possible, loops count down to zero. When comparing to
+zero on the ARM CPU, a processor flag is set. Overall, this should
+result in fewer instructions per cycle \cite[p.~180]{Langbridge}.
+
+The GNU compiler has intrinsic C support for ARM's NEON SIMD
+extensions; however, ARMv6 does not have NEON instructions but it
+does have other parallel instructions that GCC does not have
+intrinsic C support for. ARMv6 chips and higher have instructions
+for parallel computations on two 16-bit and four 8-bit values in
+normal registers. If these instructions are intrinsically supported,
+they would be in the C header {\tt arm\_acle.h} \cite[p.~14]{IHI0053B}. GCC
+does not have this header and the Clang compiler currently has an
+incomplete version. Some inline assembly instructions were used
+where GCC was unlikely to optimize correctly, specifically in the
+{\tt cvpi\_avuy2argb} function. Single ARM instructions are capable
+of multiple actions. Many instructions have a conditional flag that
+will cause the instruction to be executed conditionally, and one of
+the inputs passes through a barrel shifter before being passed to
+the operator \cite[p.~37]{Langbridge}.
+
+The function {\tt cvpi\_image\_coordinate\_table} returns a coordinate
+table consisting of pairs of unioned {\tt uint16\_t}, and OpenVG writes
+images to memory as a packed block with four 8-bit values per
+pixel. This allows the user to take advantage of ARMv6's parallel
+instructions. CVPI defines the union type, {\tt cvpi\_pixel}, with an
+array accessor and channel index aliases {\tt cvpi\_pixel\_red},
+{\tt cvpi\_pixel\_green}, {\tt cvpi\_pixel\_blue}, {\tt cvpi\_pixel\_v},
+{\tt cvpi\_pixel\_u}, {\tt cvpi\_pixel\_y}, and {\tt cvpi\_pixel\_alpha}. This allows
+the user to treat an image in memory as if it were a two
+dimensional array, with the pixels being one dimension and the
+channels being the other dimension.
+
+\chapter{License}
+\label{sec-12}
+The code is licensed under the LGPLv3 (GNU Lesser General Public
+License version 3); with the exception of {\tt convolve.el}, which is
+licensed under the GPLv3 (GNU General Public License
+version 3), and code in the {\tt m4} directory.
+
+Graphics and data used in testing are licensed under the CC0 (Creative
+Commons Zero) 1.0 Universal or any later version published by the
+Creative Commons. All other graphics are licensed under the Creative
+Commons Attribution 4.0 International License or any later version
+published by the Creative Commons.
+
+All documents are licensed under the GNU Free Documentation License,
+Version 1.3 or any later version published by the Free Software
+Foundation.
+
+\bibliographystyle{plain}
+\bibliography{sources}
+\end{document}

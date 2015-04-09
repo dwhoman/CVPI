@@ -1,3 +1,20 @@
+dnl This file is part of CVPI.
+dnl 
+dnl Copyright (C) 2015
+dnl 
+dnl This program is free software: you can redistribute it and/or
+dnl modify it under the terms of the GNU Lesser General Public License
+dnl as published by the Free Software Foundation, either version 3 of
+dnl the License, or (at your option) any later version.
+dnl 
+dnl This program is distributed in the hope that it will be useful,
+dnl but WITHOUT ANY WARRANTY; without even the implied warranty of
+dnl MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+dnl GNU Lesser General Public License for more details.
+dnl 
+dnl You should have received a copy of the GNU Lesser General Public License
+dnl along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 AC_PREREQ([2.61])		dnl min autoconf version
 AC_INIT([cvpi],[1.0])		dnl package: cvpi, version: 1.0
 AC_CANONICAL_HOST		dnl get the system type

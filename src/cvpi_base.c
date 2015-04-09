@@ -1,3 +1,22 @@
+/*
+  This file is part of CVPI.
+
+  Copyright (C) 2015
+
+  This program is free software: you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public License
+  as published by the Free Software Foundation, either version 3 of
+  the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #ifndef CVPI_BASE
 #include "cvpi_base.h"
 #endif
@@ -36,7 +55,7 @@ int cvpi_log_file_set(cvpi_log_file_location location,
   } else {
     cvpi_log_file_private = fopen(file_path, "w");
     if(cvpi_log_file_private == NULL) {
-      cvpi_log_file_private = cvpi_log_file_default;
+      cvpi_log_file_private = CVPI_LOG_FILE_DEFAULT;
       return errno;
     } else {
       return 0;
@@ -45,7 +64,7 @@ int cvpi_log_file_set(cvpi_log_file_location location,
 }
 FILE* cvpi_log_file_get(void) {
   if(cvpi_log_file_private == NULL) {
-    cvpi_log_file_private = cvpi_log_file_default;
+    cvpi_log_file_private = CVPI_LOG_FILE_DEFAULT;
   }
   return cvpi_log_file_private;
 }
@@ -54,7 +73,7 @@ int cvpi_log_file_unset(void) {
   if(cvpi_log_file_private != stdout && cvpi_log_file_private != stderr && fclose(cvpi_log_file_private)) {
     return errno;
   } else {
-    cvpi_log_file_private = cvpi_log_file_default;
+    cvpi_log_file_private = CVPI_LOG_FILE_DEFAULT;
     return 0;
   }
 }
@@ -81,7 +100,7 @@ static void print_threaded(void* data_) {
     switch(data->type) {
     case 1:
       if(data->format != NULL && data->func != NULL && data->line != NULL) {
-	fprintf(cvpi_log_file, data->format, data->func, data->line);
+	fprintf(CVPI_LOG_FILE, data->format, data->func, data->line);
 	freeSafe(data->format);
 	freeSafe(data->func);
 	freeSafe(data->line);
@@ -89,7 +108,7 @@ static void print_threaded(void* data_) {
       break;
     case 2:
       if(data->format != NULL && data->func != NULL && data->line != NULL && data->text != NULL) {
-	fprintf(cvpi_log_file, data->format, data->func, data->line, data->text);
+	fprintf(CVPI_LOG_FILE, data->format, data->func, data->line, data->text);
 	freeSafe(data->format);
 	freeSafe(data->text);
 	freeSafe(data->func);
@@ -97,7 +116,7 @@ static void print_threaded(void* data_) {
       break;
     case 3:
       if(data->format != NULL && data->func != NULL && data->line != NULL && data->num1 != NULL) {
-	fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1);
+	fprintf(CVPI_LOG_FILE, data->format, data->func, data->line, data->num1);
 	freeSafe(data->format);
 	freeSafe(data->func);
 	freeSafe(data->line);
@@ -106,7 +125,7 @@ static void print_threaded(void* data_) {
       break;
     case 4:
       if(data->format != NULL && data->func != NULL && data->line != NULL && data->num1 != NULL && data->num2 != NULL) {
-	fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1, data->num2);
+	fprintf(CVPI_LOG_FILE, data->format, data->func, data->line, data->num1, data->num2);
 	freeSafe(data->format);
 	freeSafe(data->func);
 	freeSafe(data->line);
@@ -117,7 +136,7 @@ static void print_threaded(void* data_) {
     case 5:
       if(data->format != NULL && data->func != NULL && data->line != NULL && data->num1  != NULL && 
 	 data->num2  != NULL &&  data->num3  != NULL) {
-	fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1, 
+	fprintf(CVPI_LOG_FILE, data->format, data->func, data->line, data->num1, 
 		data->num2, data->num3);
 	freeSafe(data->format);
 	freeSafe(data->func);
@@ -130,7 +149,7 @@ static void print_threaded(void* data_) {
     case 6:
       if(data->format != NULL && data->func != NULL && data->line != NULL && data->num1 != NULL && 
 		data->num2 != NULL && data->num3 != NULL && data->num4) {
-	fprintf(cvpi_log_file, data->format, data->func, data->line, data->num1, 
+	fprintf(CVPI_LOG_FILE, data->format, data->func, data->line, data->num1, 
 		data->num2, data->num3, data->num4);
 	freeSafe(data->format);
 	freeSafe(data->func);
@@ -142,7 +161,7 @@ static void print_threaded(void* data_) {
       }
       break;
     default:
-      fprintf(cvpi_log_file, "Bad cvpi_log_format\n");
+      fprintf(CVPI_LOG_FILE, "Bad cvpi_log_format\n");
       break;
     }
     freeSafe(data);

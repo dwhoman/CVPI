@@ -1,3 +1,22 @@
+/*
+  This file is part of CVPI.
+
+  Copyright (C) 2015
+
+  This program is free software: you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public License
+  as published by the Free Software Foundation, either version 3 of
+  the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -51,7 +70,7 @@
   goto TAKEDOWN;\
   }} while(0)
 
-//    fprintf(cvpi_log_file, "%s:%d: vgError:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
+//    fprintf(CVPI_LOG_FILE, "%s:%d: vgError:%s\n", __func__, __LINE__, cvpi_vg_error_string(error));
 #define cvpi_vg_error_check()\
   do {\
   VGErrorCode error = vgGetError();\
@@ -145,7 +164,7 @@ CVPI_BOOL test_cvpi_pixel(void) {
   if(cmp == 0) {
     return_value = CVPI_TRUE; 
   } else {
-    fprintf(cvpi_log_file, "%s: cvpi_pixel: %d %d %d %d | VGImage: %d %d %d %d.\n", __func__,
+    fprintf(CVPI_LOG_FILE, "%s: cvpi_pixel: %d %d %d %d | VGImage: %d %d %d %d.\n", __func__,
 	    pixel.channel[cvpi_pixel_red], pixel.channel[cvpi_pixel_green], 
 	    pixel.channel[cvpi_pixel_blue], pixel.channel[cvpi_pixel_alpha], 
 	    data[0], data[1], data[2], data[3]);
@@ -209,7 +228,7 @@ CVPI_BOOL test_cvpi_yuyv2yuva() {
 
   if((input_size*2 != correct_size
       && correct_size != CVPI_PIXEL_BYTES * OUTPUT_WIDTH * OUTPUT_HEIGHT)) {
-    fprintf(cvpi_log_file, "%s: Input file and correct file size mismatch. %d and %d\n",
+    fprintf(CVPI_LOG_FILE, "%s: Input file and correct file size mismatch. %d and %d\n",
 	    __func__, input_size*2, correct_size);
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -224,12 +243,12 @@ CVPI_BOOL test_cvpi_yuyv2yuva() {
   image_correct = malloc(correct_size);
 
   if(input_size != fread(image_in, 1, input_size, input)) {
-    fprintf(cvpi_log_file, "%s: Reading the input image from memory failed.\n",__func__);
+    fprintf(CVPI_LOG_FILE, "%s: Reading the input image from memory failed.\n",__func__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
   if(correct_size != fread(image_correct, 1, correct_size, correct)) {
-    fprintf(cvpi_log_file, "%s: Reading the correct image from memory failed.\n",__func__);
+    fprintf(CVPI_LOG_FILE, "%s: Reading the correct image from memory failed.\n",__func__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -263,11 +282,11 @@ CVPI_BOOL test_cvpi_yuyv2yuva() {
     unsigned long fwrite_size = CVPI_PIXEL_BYTES * OUTPUT_WIDTH * OUTPUT_HEIGHT;
     if(written != fwrite_size || flushed != 0) {
       if(written != fwrite_size) {
-	fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 		__func__, fwrite_size, written);
 	BADSTATE = 1;
       } else {
-	fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 		__func__, errno, flushed);
 	BADSTATE = 1;
       }
@@ -370,9 +389,9 @@ int BADSTATE = 0;
   if(cmp == 0) {
     return_value = CVPI_TRUE;
   } else if(cmp > 0) {
-    fprintf(cvpi_log_file, "%s: added_data is greater than the correct data.\n", __func__);
+    fprintf(CVPI_LOG_FILE, "%s: added_data is greater than the correct data.\n", __func__);
   } else {
-    fprintf(cvpi_log_file, "%s: added_data is less than the correct data.\n", __func__);
+    fprintf(CVPI_LOG_FILE, "%s: added_data is less than the correct data.\n", __func__);
   }
   if(strlen(file_path) > 0) {      
     output = fopen(file_path, "w");
@@ -383,10 +402,10 @@ int BADSTATE = 0;
     int flushed = fflush(output);
     if(written != fwrite_size || flushed != 0) {
       if(written != fwrite_size) {
-	fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 		__func__, fwrite_size, written);
       } else {
-	fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 		__func__, errno, flushed);
       }
     }
@@ -733,7 +752,7 @@ CVPI_BOOL test_cvpi_channel_add_RB(void) {
   cvpi_vg_error_check();
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -769,9 +788,9 @@ CVPI_BOOL test_cvpi_channel_add_RB(void) {
   if(cmp == 0) {
     return_value = CVPI_TRUE;
   } else if(cmp > 0) {
-    fprintf(cvpi_log_file, "%s: added_data is greater than the correct data.\n", __func__);
+    fprintf(CVPI_LOG_FILE, "%s: added_data is greater than the correct data.\n", __func__);
   } else {
-    fprintf(cvpi_log_file, "%s: added_data is less than the correct data.\n", __func__);
+    fprintf(CVPI_LOG_FILE, "%s: added_data is less than the correct data.\n", __func__);
   }
   char* file_name = "test_cvpi_channel_add_RB";
 
@@ -782,7 +801,7 @@ CVPI_BOOL test_cvpi_channel_add_RB(void) {
     
     int file_path_print = sprintf(file_path, "%s%s", IMAGES_TMP_DIR, file_name);
     if(file_path_print < 0) {
-      fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
+      fprintf(CVPI_LOG_FILE, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
       return_value = CVPI_FALSE;
       BADSTATE = 1;
       goto TAKEDOWN;
@@ -797,15 +816,15 @@ CVPI_BOOL test_cvpi_channel_add_RB(void) {
 
     if(written != fwrite_size || flushed != 0) {
       if(written != fwrite_size) {
-	fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 		__func__, fwrite_size, written);
       } else {
-	fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 		__func__, errno, flushed);
       }
     }
   } else {
-    fprintf(cvpi_log_file, "%s:%d: file path length = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d: file path length = 0\n", __func__, __LINE__);
   }
  TAKEDOWN:
   fcloseSafeTakedown(output);
@@ -893,7 +912,7 @@ CVPI_BOOL test_cvpi_channel_add_RR(void) {
   cvpi_image_error_check(second_image);
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -930,9 +949,9 @@ CVPI_BOOL test_cvpi_channel_add_RR(void) {
   if(cmp == 0) {
     return_value = CVPI_TRUE;
   } else if(cmp > 0) {
-    fprintf(cvpi_log_file, "%s: added_data is greater than the correct data.\n", __func__);
+    fprintf(CVPI_LOG_FILE, "%s: added_data is greater than the correct data.\n", __func__);
   } else {
-    fprintf(cvpi_log_file, "%s: added_data is less than the correct data.\n", __func__);
+    fprintf(CVPI_LOG_FILE, "%s: added_data is less than the correct data.\n", __func__);
   }
 
   char* file_name = "test_cvpi_channel_add_RR";
@@ -944,7 +963,7 @@ CVPI_BOOL test_cvpi_channel_add_RR(void) {
 
     int file_path_print = sprintf(file_path, "%s%s", IMAGES_TMP_DIR, file_name);
     if(file_path_print < 0) {
-      fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
+      fprintf(CVPI_LOG_FILE, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
       BADSTATE = 1;
       goto TAKEDOWN;
     }
@@ -957,15 +976,15 @@ CVPI_BOOL test_cvpi_channel_add_RR(void) {
     int flushed = fflush(output);
     if(written != fwrite_size || flushed != 0) {
       if(written != fwrite_size) {
-	fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 		__func__, fwrite_size, written);
       } else {
-	fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 		__func__, errno, flushed);
       }
     }
   } else {
-    fprintf(cvpi_log_file, "%s:%d: file path length = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d: file path length = 0\n", __func__, __LINE__);
   }
 
  TAKEDOWN:
@@ -1055,7 +1074,7 @@ CVPI_BOOL test_cvpi_color_channels_add(void) {
 
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1105,7 +1124,7 @@ CVPI_BOOL test_cvpi_color_channels_add(void) {
     
     int file_path_print = sprintf(file_path, "%s%s", IMAGES_TMP_DIR, file_name);
     if(file_path_print < 0) {
-      fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
+      fprintf(CVPI_LOG_FILE, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
       return_value = CVPI_FALSE;
       BADSTATE = 1;
       goto TAKEDOWN;
@@ -1119,15 +1138,15 @@ CVPI_BOOL test_cvpi_color_channels_add(void) {
     int flushed = fflush(output);
     if(written != fwrite_size || flushed != 0) {
       if(written != fwrite_size) {
-	fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 		__func__, fwrite_size, written);
       } else {
-	fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 		__func__, errno, flushed);
       }
     }
   } else {
-    fprintf(cvpi_log_file, "%s:%d: file path length = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d: file path length = 0\n", __func__, __LINE__);
   }
 
   TAKEDOWN:
@@ -1218,7 +1237,7 @@ CVPI_BOOL test_cvpi_all_channels_add(void) {
 
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1270,15 +1289,15 @@ CVPI_BOOL test_cvpi_all_channels_add(void) {
     int flushed = fflush(output);
     if(written != fwrite_size || flushed != 0) {
       if(written != fwrite_size) {
-	fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 		__func__, fwrite_size, written);
       } else {
-	fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 		__func__, errno, flushed);
       }
     }
   } else {
-    fprintf(cvpi_log_file, "%s:%d: file path length = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d: file path length = 0\n", __func__, __LINE__);
   }
 
   TAKEDOWN:
@@ -1380,7 +1399,7 @@ CVPI_BOOL test_cvpi_image_combine_channelwise(void) {
   
   size_t image_size = width*height*CVPI_PIXEL_BYTES;
   if(image_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
 
     return_value = CVPI_FALSE;
     BADSTATE = 1;
@@ -1431,7 +1450,7 @@ CVPI_BOOL test_cvpi_image_combine_channelwise(void) {
 
     int file_path_print = sprintf(file_path, "%s%s", IMAGES_TMP_DIR, file_name);
     if(file_path_print < 0) {
-      fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
+      fprintf(CVPI_LOG_FILE, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
       return_value = CVPI_FALSE;
       BADSTATE = 1;
       goto TAKEDOWN;
@@ -1444,15 +1463,15 @@ CVPI_BOOL test_cvpi_image_combine_channelwise(void) {
     int flushed = fflush(output);
     if(written != fwrite_size || flushed != 0) {
       if(written != fwrite_size) {
-	fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 		__func__, fwrite_size, written);
       } else {
-	fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+	fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 		__func__, errno, flushed);
       }
     }
   } else {
-    fprintf(cvpi_log_file, "%s:%d: file path length = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d: file path length = 0\n", __func__, __LINE__);
   }
   TAKEDOWN:
   fcloseSafeTakedown(output);
@@ -1499,7 +1518,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
 
   size_t path_size = sizeof(*input_file_name) * (strlen(IMAGES_CORRECT_DIR) + strlen(input_file_name));
   if(path_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1509,7 +1528,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
 
   int file_path_print = sprintf(input_path, "%s%s", IMAGES_CORRECT_DIR, input_file_name);
   if(file_path_print < 0) {
-    fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
+    fprintf(CVPI_LOG_FILE, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1524,7 +1543,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
   seek_error_check(fseek(input_file, 0L, SEEK_SET));
 
   if(input_file_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1542,7 +1561,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
 
   size_t output_path_size = sizeof(*output_file_name) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
   if(output_path_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1552,7 +1571,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
 
   file_path_print = sprintf(output_path, "%s%s", IMAGES_TMP_DIR, output_file_name);
   if(file_path_print < 0) {
-    fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
+    fprintf(CVPI_LOG_FILE, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1570,7 +1589,7 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
   cvpi_vg_error_check();
   size_t output_size = width*height*CVPI_PIXEL_BYTES;
   if(output_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1595,10 +1614,10 @@ static CVPI_BOOL test_cvpi_channel_threshold_common(char* input_file_name, char*
   int flushed = fflush(output_file);
   if(written != output_size || flushed != 0) {
     if(written != output_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, output_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -1674,7 +1693,7 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
 
   size_t input_path_size = sizeof(*input_file_name) * (strlen(IMAGES_CORRECT_DIR) + strlen(input_file_name));
   if(input_path_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     return_value = CVPI_FALSE;
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1684,13 +1703,13 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
   
   int input_path_print = sprintf(input_path, "%s%s", IMAGES_CORRECT_DIR, input_file_name);
   if(input_path_print < 0) {
-    fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, input_path);
+    fprintf(CVPI_LOG_FILE, "%s:%d:error writing file path: %d\n", __func__, __LINE__, input_path);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
   input_file = fopen(input_path, "r");
   if(input_file == NULL) {
-    fprintf(cvpi_log_file, "%s:%d: Error opening %s: errno = %d\n",
+    fprintf(CVPI_LOG_FILE, "%s:%d: Error opening %s: errno = %d\n",
 	    __func__, __LINE__, input_path, errno);
     BADSTATE = 1;
     goto TAKEDOWN;
@@ -1702,7 +1721,7 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
   seek_error_check(fseek(input_file, 0L, SEEK_SET));
 
   if(input_file_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -1710,13 +1729,13 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
   heap_error_check(input_data);
 
   if(input_file_size != fread(input_data, 1, input_file_size, input_file)) {
-    fprintf(cvpi_log_file, "%s: Reading the input image from memory failed.\n",__func__);
+    fprintf(CVPI_LOG_FILE, "%s: Reading the input image from memory failed.\n",__func__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
   size_t output_path_size = sizeof(*output_file_name) * (strlen(IMAGES_TMP_DIR) + strlen(output_file_name));
   if(output_path_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -1725,7 +1744,7 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
   
   int file_path_print = sprintf(output_path, "%s%s", IMAGES_TMP_DIR, output_file_name);
   if(file_path_print < 0) {
-    fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
+    fprintf(CVPI_LOG_FILE, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -1761,10 +1780,10 @@ static CVPI_BOOL test_cvpi_image_threshold_common(const char* input_file_name,
 
   if(written != output_size || flushed != 0) {
     if(written != output_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, output_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -1911,7 +1930,7 @@ static CVPI_BOOL test_cvpi_image_threshold_sector_common(const char* input_file_
 
   unsigned long fwrite_size = width*height*CVPI_PIXEL_BYTES;
   if(fwrite_size <= 0) {
-    fprintf(cvpi_log_file, "%s:%d:malloc size = 0\n", __func__, __LINE__);
+    fprintf(CVPI_LOG_FILE, "%s:%d:malloc size = 0\n", __func__, __LINE__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -1930,10 +1949,10 @@ static CVPI_BOOL test_cvpi_image_threshold_sector_common(const char* input_file_
 
   if(written != fwrite_size || flushed != 0) {
     if(written != fwrite_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, fwrite_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -2051,7 +2070,7 @@ static CVPI_BOOL test_cvpi_image_mask_channel_common(char* output_file_name,
 
   int file_path_print = sprintf(output_path, "%s%s", IMAGES_TMP_DIR, output_file_name);
   if(file_path_print < 0) {
-    fprintf(cvpi_log_file, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
+    fprintf(CVPI_LOG_FILE, "%s:%d:error writing file path: %d\n", __func__, __LINE__, file_path_print);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -2063,10 +2082,10 @@ static CVPI_BOOL test_cvpi_image_mask_channel_common(char* output_file_name,
   int flushed = fflush(output_file);
   if(written != fwrite_size || flushed != 0) {
     if(written != fwrite_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, fwrite_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -2156,10 +2175,10 @@ CVPI_BOOL test_cvpi_image_rgba_to_binary(void) {
 
   if(written != fwrite_size || flushed != 0) {
     if(written != fwrite_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, fwrite_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -3605,7 +3624,7 @@ CVPI_BOOL test_filter_common(const VGshort* filter_x, const VGshort* filter_y, i
   heap_error_check(data);
 
   if(input_size != fread(data, 1, input_size, input_file)) {
-    fprintf(cvpi_log_file, "%s: Reading the input image from memory failed.\n",__func__);
+    fprintf(CVPI_LOG_FILE, "%s: Reading the input image from memory failed.\n",__func__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -3640,10 +3659,10 @@ CVPI_BOOL test_filter_common(const VGshort* filter_x, const VGshort* filter_y, i
 
   if(written != input_size || flushed != 0) {
     if(written != input_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, input_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -3725,7 +3744,7 @@ CVPI_BOOL test_cvpi_invert_colors(void) {
   heap_error_check(data2);
 
   if(input_size != fread(data, 1, input_size, input_file)) {
-    fprintf(cvpi_log_file, "%s: Reading the input image from memory failed.\n",__func__);
+    fprintf(CVPI_LOG_FILE, "%s: Reading the input image from memory failed.\n",__func__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -3773,10 +3792,10 @@ CVPI_BOOL test_cvpi_invert_colors(void) {
 
   if(written != input_size || flushed != 0) {
     if(written != input_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, input_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -3787,10 +3806,10 @@ CVPI_BOOL test_cvpi_invert_colors(void) {
 
   if(written != input_size || flushed != 0) {
     if(written != input_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, input_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -4010,10 +4029,10 @@ CVPI_BOOL test_cvpi_avuy2ayuv(void) {
 
   if(written != fwrite_size || flushed != 0) {
     if(written != fwrite_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, fwrite_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -4072,13 +4091,13 @@ CVPI_BOOL test_cvpi_avuy2argb(void) {
   heap_error_check(output_data);
 
   if(input_size != fread(input_data, 1, input_size, input_file)) {
-    fprintf(cvpi_log_file, "%s: Reading the input image from memory failed.\n",__func__);
+    fprintf(CVPI_LOG_FILE, "%s: Reading the input image from memory failed.\n",__func__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
 
   if(CVPI_FALSE_TEST(cvpi_avuy2argb(input_data, output_data, width, height))) {
-    fprintf(cvpi_log_file, "%s: input_data or output_data is NULL.\n",__func__);
+    fprintf(CVPI_LOG_FILE, "%s: input_data or output_data is NULL.\n",__func__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }
@@ -4088,10 +4107,10 @@ CVPI_BOOL test_cvpi_avuy2argb(void) {
   int flushed = fflush(output_file);
   if(written != input_size || flushed != 0) {
     if(written != input_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, input_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -4162,10 +4181,10 @@ CVPI_BOOL test_cvpi_image2argb(void) {
   int flushed = fflush(output);
   if(written != input_size || flushed != 0) {
     if(written != input_size) {
-      fprintf(cvpi_log_file, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fwrite size discrepancy\nexpected:%d\nreturned:%d.\n",
 	      __func__, input_size, written);
     } else {
-      fprintf(cvpi_log_file, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
+      fprintf(CVPI_LOG_FILE, "%s: Error writing file: fflush\nerrno = %d\nreturned = %d\n",
 	      __func__, errno, flushed);
     }
   }
@@ -4293,7 +4312,7 @@ CVPI_BOOL test_vgConvolveNoShift(void) {
   heap_error_check(convolved_data);
 
   if(data_size != fread(test_data, 1, data_size, test_file)) {
-    fprintf(cvpi_log_file, "%s: Reading the image from memory failed.\n",__func__);
+    fprintf(CVPI_LOG_FILE, "%s: Reading the image from memory failed.\n",__func__);
     BADSTATE = 1;
     goto TAKEDOWN;
   }

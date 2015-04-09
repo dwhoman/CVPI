@@ -1,8 +1,29 @@
+/*
+  This file is part of CVPI.
+
+  Copyright (C) 2015
+
+  This program is free software: you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public License
+  as published by the Free Software Foundation, either version 3 of
+  the License, or (at your option) any later version.
+
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU Lesser General Public License for more details.
+
+  You should have received a copy of the GNU Lesser General Public License
+  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/* Synchronously capture and convert frames from a v4l camera using
+   CVPI and save results to YUVA images. RGBA conversion is done by
+   another program, cvpi_sample_yuv2bmp. Use the
+   cvpi_sample_motion_detection.sh wrapper. */
+
 #ifndef CAMERA_SETUP_H
 #include "cvpi_camera_setup.h"
-/* variables camera0, camera1, camera2 */
-/* struct buffer */
-/* struct camera */
 #endif
 
 #ifndef CVPI
@@ -24,6 +45,7 @@ unsigned long timespan(struct timespec start, struct timespec end) {
   return (unsigned long)(NSPS*(end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec));
 }
 
+/* do file output in a POSIX thread, outside of the process loop */
 typedef struct {
   int index;
   void* data;
@@ -78,7 +100,7 @@ static void file_output_threaded(void* data) {
   }
 }
 
-
+/* settings for v4l2shared_data */
 typedef struct {
   VGImage image;
   int stride;
@@ -87,10 +109,13 @@ typedef struct {
   CVPI_BOOL success;
 } yuyv_settings;
 
+/* settings are in heap memory */
 yuyv_settings* yuyv = NULL;
 
+/* what to do when v4l captures a camera frame */
 void v4l2shared_data(void* start, uint32_t length) {
   if(yuyv != NULL && yuyv->image != VG_INVALID_HANDLE) {
+    /* move data from camera frame buffer into GPU memory */
     vgImageSubData(yuyv->image, start, yuyv->stride, CVPI_COLOR_SPACE, 0, 0, yuyv->width, yuyv->height);
     vgFinish();
     VGErrorCode error = vgGetError();
@@ -105,19 +130,15 @@ void v4l2shared_data(void* start, uint32_t length) {
   }
 }
 
-/* use two POSIX threads, one for v4l, the other for image
-   processing. Use a semaphore to coordinate data passing between
-   threads. */
 int main(int argc, char** argv) {
   cvpi_egl_settings egl_settings = NULL;
   cvpi_egl_instance egl_instance = NULL;
-
+  /* input images, current and previous frames */
   VGImage yuva_image_1 = VG_INVALID_HANDLE;
   VGImage yuva_image_2 = VG_INVALID_HANDLE;
-  int switcher = 1;
+  int switcher = 1;		/* whether yuva_image_1 or yuva_image_2 is newer */
 
   cvpi_camera camera = NULL;
-
 
   if(argc < 4) {
     fprintf(stderr, "Too few arguments\n");
@@ -137,7 +158,7 @@ int main(int argc, char** argv) {
 
   VGint yuva_stride = yuva_width*CVPI_PIXEL_BYTES;
   VGint image_size = image_height*yuva_stride;
-
+  /* data for v4l2shared_data */
   yuyv = malloc(sizeof(* yuyv));
   if(yuyv == NULL) {
     fprintf(stderr, "Failed to allocate for yuyv struct\n");
@@ -150,9 +171,11 @@ int main(int argc, char** argv) {
   yuyv->stride = yuva_stride/2;
   yuyv->width = yuva_width/2;
 
+  /* time inside and outside the process loop */
   struct timespec begin, end, begin_inner, end_inner;
   unsigned long inner_total = 0;
 
+  /* create a function pointer to v4l2shared_data for v4l */
   cvpi_process_image process_image_fn = v4l2shared_data;
   camera = cvpi_camera_create("/dev/video0", yuva_width, image_height, 4, CVPI_CAMERA_FORMAT);
 
@@ -166,7 +189,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "camera failed to start\n");
     goto TAKEDOWN;
   }
-
+  /* setup EGL */
   egl_settings = cvpi_egl_settings_create();
   if(egl_settings == NULL) {
     fprintf(stderr, "cvpi_egl_settings_create failed\n");
@@ -233,7 +256,7 @@ int main(int argc, char** argv) {
     fprintf(stderr, "cvpi_egl_instance_setup failed\n");
     goto TAKEDOWN;
   }
-
+  /* finished setting up EGL, create space in GPU memory for camera frames */
   yuyv->image = vgCreateImage(CVPI_COLOR_SPACE, yuyv->width, yuyv->height, VG_IMAGE_QUALITY_NONANTIALIASED);
   vgFinish();
   error = vgGetError();
@@ -241,10 +264,10 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Error creating yuyv->image: %s\n", cvpi_vg_error_string(error));
     goto TAKEDOWN;
   }
-
+  /* max number of loops */
   int max = frames + 50;
-  int thread_not_created;
-  //begin = clock();
+  int thread_not_created;	/* to capture thread creation return value */
+
   clock_gettime(CLOCK_REALTIME, &begin);
 
   VGImage new_image;
@@ -263,7 +286,7 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Camera failed to read\n");
       goto LOOP_TAKEDOWN;
     }
-
+    /* keep old and new YUVA images in the same place in memory */
     if(switcher) {
       yuva_image_1 = cvpi_yuyv2yuva(yuyv->image);
       if(yuva_image_1 == VG_INVALID_HANDLE) {
@@ -284,7 +307,7 @@ int main(int argc, char** argv) {
 
     switcher = !switcher;
 
-    /* need two itterations before creating output */
+    /* need two iterations before creating output */
     if(i == 0) {
       ++i;
       continue;
@@ -298,7 +321,7 @@ int main(int argc, char** argv) {
       goto LOOP_TAKEDOWN;
     }
 
-    thread_data->index = i;
+    thread_data->index = i;	/* output image number */
     thread_data->size = image_size;
 
     thread_data->data = malloc(image_size);
@@ -323,11 +346,24 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Computing mask failed.\n");
       goto LOOP_TAKEDOWN;
     }
+    /* free memory as soon as possible to prevent out of memory errors */
+    if(added_1 != VG_INVALID_HANDLE) {
+      vgDestroyImage(added_1);
+      added_1 = VG_INVALID_HANDLE;
+    }
+    if(added_2 != VG_INVALID_HANDLE) {
+      vgDestroyImage(added_2);
+      added_2 = VG_INVALID_HANDLE;
+    }
 
     motion = cvpi_image_add(new_image, mask, 1, -1, 1, 0);
     if(motion == VG_INVALID_HANDLE) {
       fprintf(stderr, "Computing motion failed.\n");
       goto LOOP_TAKEDOWN;
+    }
+    if(mask != VG_INVALID_HANDLE) {
+      vgDestroyImage(mask);
+      mask = VG_INVALID_HANDLE;
     }
 
     vgGetImageSubData(motion, thread_data->data, yuva_stride, CVPI_COLOR_SPACE, 0, 0, yuva_width, image_height);
@@ -342,7 +378,7 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Error getting image data: %s\n", cvpi_vg_error_string(error));
       goto LOOP_TAKEDOWN;
     }
-
+    /* don't time file output */
     clock_gettime(CLOCK_REALTIME, &end_inner);
     inner_total += timespan(begin_inner, end_inner);
 
@@ -378,7 +414,7 @@ int main(int argc, char** argv) {
 	free(thread_data);
       }
     }
-    /* got to here before increamenting i */
+    /* got to here before incrementing i */
     if(i == 0) {
       break;
     }
