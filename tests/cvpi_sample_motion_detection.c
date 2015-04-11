@@ -1,7 +1,7 @@
 /*
   This file is part of CVPI.
 
-  Copyright (C) 2015
+  Copyright (C) 2015 Devin Homan
 
   This program is free software: you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public License
@@ -30,7 +30,9 @@
 #include "cvpi.h"
 #endif
 
+#if CVPI_TIME == 1
 #include "time.h"
+#endif
 
 #include "cvpi_egl_surface_functions.h"
 
@@ -40,10 +42,11 @@
 /* images to communicate between v4l and OpenVG double buffering */
 /* Points to NULL if shared_data has been copied into GPU
    memory. Points to a Transfer_Data otherwise */
-
+#if CVPI_TIME == 1
 unsigned long timespan(struct timespec start, struct timespec end) {
   return (unsigned long)(NSPS*(end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec));
 }
+#endif
 
 /* do file output in a POSIX thread, outside of the process loop */
 typedef struct {
@@ -172,8 +175,10 @@ int main(int argc, char** argv) {
   yuyv->width = yuva_width/2;
 
   /* time inside and outside the process loop */
+#if CVPI_TIME == 1
   struct timespec begin, end, begin_inner, end_inner;
   unsigned long inner_total = 0;
+#endif
 
   /* create a function pointer to v4l2shared_data for v4l */
   cvpi_process_image process_image_fn = v4l2shared_data;
@@ -267,9 +272,9 @@ int main(int argc, char** argv) {
   /* max number of loops */
   int max = frames + 50;
   int thread_not_created;	/* to capture thread creation return value */
-
+#if CVPI_TIME == 1
   clock_gettime(CLOCK_REALTIME, &begin);
-
+#endif
   VGImage new_image;
   VGImage old_image;
   VGImage added_1 = VG_INVALID_HANDLE;
@@ -279,7 +284,9 @@ int main(int argc, char** argv) {
   CVPI_BOOL read;
   file_output_thread_data* thread_data = NULL;
   for(int i = 0; i <= frames && max != 0; --max) {
+#if CVPI_TIME == 1
     clock_gettime(CLOCK_REALTIME, &begin_inner);
+#endif
     thread_not_created = 1;
     read = cvpi_camera_read_frame(camera, process_image_fn);
     if(CVPI_FALSE_TEST(read) || CVPI_FALSE_TEST(yuyv->success)) {
@@ -378,10 +385,11 @@ int main(int argc, char** argv) {
       fprintf(stderr, "Error getting image data: %s\n", cvpi_vg_error_string(error));
       goto LOOP_TAKEDOWN;
     }
+#if CVPI_TIME == 1
     /* don't time file output */
     clock_gettime(CLOCK_REALTIME, &end_inner);
     inner_total += timespan(begin_inner, end_inner);
-
+#endif
     pthread_t id;    
     thread_not_created = pthread_create(&id, 0, file_output_threaded, (void*)thread_data);
     pthread_join(id, 0);
@@ -419,6 +427,7 @@ int main(int argc, char** argv) {
       break;
     }
   }
+#if CVPI_TIME == 1
   clock_gettime(CLOCK_REALTIME, &end);
 
   double fps = (double)frames * NSPS / (double)(timespan(begin, end));
@@ -426,7 +435,7 @@ int main(int argc, char** argv) {
   double fps_inner = (double)frames * NSPS / (double)inner_total;
 
   printf("%f,%f", fps_inner, fps);
-
+#endif
  TAKEDOWN:
   if(yuyv->image != VG_INVALID_HANDLE) {
     vgDestroyImage(yuyv->image);
@@ -454,4 +463,6 @@ int main(int argc, char** argv) {
   if(yuyv != NULL) {
     free(yuyv);
   }
+
+  return 0;
 }

@@ -1,6 +1,6 @@
 ;;; convolve.el --- convolution for emacs calc
 
-;; Copyright (C) 2015 Devin Homan.
+;; Copyright (C) 2015 Devin Homan. Devin Homan
 
 ;; Authors: Devin Homan
 
@@ -20,11 +20,15 @@
 ;; along with GNU Emacs. If not, see <http://www.gnu.org/licenses/>.
 
 (defmath convolve (input kernel &optional tile)
-  "Convolve input with kernel. If TILE is a number, then the
+  "Convolve INPUT with KERNEL. If TILE is a number, then the
 input image will be padded with that number; else, padding will
 be done by clamping.  That is, for input values that lie outside
 the bounds of the input, the closest edge value of the input is
-used."
+used. Use `convrep' and `convref' to do convolution with repeated
+tiling and reflected tiling respectively. The kernel and image
+origins are at the kernel and image centers, rather than in the
+upper left corner. See the Kronos OpenVG version 1.1 manual, page
+133 or details."
   (interactive 2 "conv")
   (when (not (and
 	      (matrixp input)
@@ -46,10 +50,10 @@ used."
 			     (+ sum
 				(*
 				 (subscr kernel j i)
-				 (let ((image-x ;; (- (+ i x) 1)
+				 (let ((image-x
 					(- (+ x i) (ceil (/ kernel-width 2)))
 						)
-				       (image-y ;; (- (+ j y) 1)
+				       (image-y
 					(- (+ y j) (ceil (/ kernel-height 2)))
 						))
 				   (if (and (>= image-x 1)
@@ -57,21 +61,21 @@ used."
 					    (>= image-y 1)
 					    (<= image-y input-height))
 				       (subscr input image-y image-x)
-				     (cond ;TODO, other two modes supported by OpenVG
-				      ;; ((equal tile "repeat")
-				      ;;  (subscr input
-				      ;; 	       (mod image-y input-height)
-				      ;; 	       (mod image-x input-width)))
-				      ;; ((equal tile "reflect")
-				      ;;  (subscr input
-				      ;; 	       (if (evenp (floor (/ image-y input-height)))
-				      ;; 		   (mod image-y input-height)
-				      ;; 		 (- input-height 1
-				      ;; 		    (mod image-y input-height)))
-				      ;; 	       (if (evenp (floor (/ image-x input-width)))
-				      ;; 		   (mod image-x input-width)
-				      ;; 		 (- input-width 1
-				      ;; 		  (mod image-x input-width)))))
+				     (cond
+				      ((equal tile "repeat")
+				       (subscr input
+				      	       (+ 1 (mod (- image-y 1) input-height))
+				      	       (+ 1 (mod (- image-x 1) input-width))))
+				      ((equal tile "reflect")
+				       (subscr input
+				      	       (if (evenp (floor (/ (- image-y 1) input-height)))
+				      		   (+ 1 (mod (- image-y 1) input-height))
+						 (- input-height
+						    (mod (- image-y 1) input-height)))
+					       (if (evenp (floor (/ (- image-x 1) input-width)))
+				      		   (+ 1 (mod (- image-x 1) input-width))
+						 (- input-width
+						    (mod (- image-x 1) input-width)))))
 				      ((numberp tile) tile) ;fill
 				      (t ;default pad
 				       (subscr input
@@ -80,3 +84,15 @@ used."
 		  (setq output-row (rcons output-row sum))))
 	   (setq output (rcons output output-row))))
     output))
+
+(defmath convrep (input kernel)
+  "Convolve INPUT with KERNEL. Tiling is done by repeating the
+INPUT. See the Calc function `convolve'."
+  (interactive 2 "convrep")
+  (convolve input kernel "repeat"))
+
+(defmath convref (input kernel)
+  "Convolve INPUT with KERNEL. Tiling is done by reflecting the
+INPUT. See the Calc function `convolve'."
+  (interactive 2 "convref")
+  (convolve input kernel "reflect"))

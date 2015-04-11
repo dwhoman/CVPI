@@ -1,6 +1,6 @@
 # This file is part of CVPI.
 # 
-# Copyright (C) 2015
+# Copyright (C) 2015 Devin Homan
 # 
 # This program is free software: you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public License
@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-env = Environment(CCFLAGS='-O3 -std=gnu99 -DCVPI_ASSEMBLY=1 -DCVPI_CAREFUL=1 -DHAVE_BCM_HOST=1 -DCVPI_LOGGING=0',
+env = Environment(CCFLAGS='-O3 -std=gnu99 -DCVPI_ASSEMBLY=1 -DCVPI_CAREFUL=1 -DHAVE_BCM_HOST=1 -DCVPI_LOGGING=0 -DCVPI_TIME=0',
                   CPPPATH= ['.', '../include', '/opt/vc/include/', '/opt/vc/include/EGL/', 
                             '/opt/vc/include/interface/vmcs_host/linux/', '/opt/vc/include/interface/vcos/pthreads/'])
 

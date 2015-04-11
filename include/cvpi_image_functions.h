@@ -1,7 +1,7 @@
 /*
   This file is part of CVPI.
 
-  Copyright (C) 2015
+  Copyright (C) 2015 Devin Homan
 
   This program is free software: you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public License
@@ -389,7 +389,7 @@ extern "C" {
   /* TODO use previous three functions to implement sector or block histogram equalization */
   VGImage cvpi_channel_histogram_equalization_sector(const VGImage image, VGImageChannel channel, CVPI_BOOL scale);
   VGImage cvpi_color_channels_histogram_equalization_sector(const VGImage image, CVPI_BOOL scale);
-  VGImage cvpi_image_histogram_equalization(const VGImage image, CVPI_BOOL scale);
+  VGImage cvpi_image_histogram_equalization_sector(const VGImage image, CVPI_BOOL scale);
   
   enum cvpi_integer_truncation {cvpi_floor, cvpi_ceil, cvpi_round};
 

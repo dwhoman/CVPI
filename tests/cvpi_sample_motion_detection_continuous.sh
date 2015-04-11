@@ -73,22 +73,30 @@ fi
 rm *.yuv 2> /dev/null
 rm *.bmp 2> /dev/null
 rm *.jpg 2> /dev/null
-cd ..
 
-rate_data=$(./cvpi_sample_motion_detection $frames $width $height)
-
-rate1=$(echo $rate_data | sed 's/,.*//')
-rate2=$(echo $rate_data | sed 's/[^,]*,//')
-
-printf "Running at %f to %f fps\n" $rate2 $rate1;
-
-cd ./cvpi_sample_motion_detect_output
-for yuva in `ls *.yuv`
+while :
 do
-    name=$(echo $yuva | sed 's/\.yuv//')
-    bmp="${name}.bmp"
-    jpg="${name}.jpg"
-    ../cvpi_sample_yuv2bmp $width $height $yuva $bmp
-    convert -rotate 180 $bmp $jpg
-    printf "Converted %s\n" $yuva
+
+    trap : INT			# ignore Ctrl-c
+
+    cd ..
+    ./cvpi_sample_motion_detection $frames $width $height
+
+    cd ./cvpi_sample_motion_detect_output
+    for yuva in `ls *.yuv`
+    do
+	name=$(echo $yuva | sed 's/\.yuv//')
+	bmp="${name}.bmp"
+	jpg="${name}.jpg"
+	../cvpi_sample_yuv2bmp $width $height $yuva $bmp
+	convert -rotate 180 $bmp $jpg
+	printf "Converted %s\n" $yuva
+    done
+
+    feh -D 0.1 -Fx --zoom fill --cycle-once *.jpg
+
+    trap - INT			# enable Ctrl-c
+    seconds=10
+    printf "Loop will restart in %d seconds. Press Ctrl-C now to quit." $seconds
+    sleep $seconds
 done

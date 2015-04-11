@@ -1,7 +1,7 @@
 /*
   This file is part of CVPI.
 
-  Copyright (C) 2015
+  Copyright (C) 2015 Devin Homan
 
   This program is free software: you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public License
@@ -4275,20 +4275,17 @@ CVPI_BOOL test_vgConvolveNoShift(void) {
   void* test_data = NULL;
   void* convolved_data = NULL;
   FILE* test_file = NULL;
-  VGint kernelWidth = 3;
-  VGint kernelHeight = 3;
+  VGint kernelWidth = 5;
+  VGint kernelHeight = 5;
 
   CVPI_BOOL return_value = CVPI_TRUE;
 
-  /* const VGshort kernel[25] = {0, 0, 0, 0, 0, */
-  /* 			      0, 0, 0, 0, 0, */
-  /* 			      0, 0, 1, 0, 0, */
-  /* 			      0, 0, 0, 0, 0, */
-  /* 			      0, 0, 0, 0, 0}; */
+  const VGshort kernel[25] = {0, 0, 0, 0, 0,
+  			      0, 0, 0, 0, 0,
+  			      0, 0, 1, 0, 0,
+  			      0, 0, 0, 0, 0,
+  			      0, 0, 0, 0, 0};
 
-  const VGshort kernel[9] = {0, 0, 0,
-			     0, 1, 0,
-                             0, 0, 0};
   VGfloat scale = 1;
   VGfloat bias = 0;
   VGTilingMode tilingMode = VG_TILE_FILL;
@@ -4327,18 +4324,12 @@ CVPI_BOOL test_vgConvolveNoShift(void) {
 		 CVPI_COLOR_SPACE, 0, 0, WIDTH, HEIGHT);
   cvpi_vg_error_check();
 
-  /* vgConvolveNoShift(dst, src, */
-  /* 		    kernelWidth, kernelHeight, */
-  /* 		    kernel, */
-  /* 		    scale, */
-  /* 		    bias, */
-  /* 		    tilingMode); */
-  vgConvolve(dst, src,
-  	     kernelWidth, kernelHeight, 0, 0,
-  	     kernel,
-  	     scale,
-  	     bias,
-  	     tilingMode);
+  vgConvolveNoShift(dst, src,
+  		    kernelWidth, kernelHeight,
+  		    kernel,
+  		    scale,
+  		    bias,
+  		    tilingMode);
   cvpi_vg_error_check();
 
   vgFinish();

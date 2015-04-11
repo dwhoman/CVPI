@@ -1,6 +1,6 @@
 dnl This file is part of CVPI.
 dnl 
-dnl Copyright (C) 2015
+dnl Copyright (C) 2015 Devin Homan
 dnl 
 dnl This program is free software: you can redistribute it and/or
 dnl modify it under the terms of the GNU Lesser General Public License
