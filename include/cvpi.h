@@ -20,7 +20,8 @@
 #ifndef CVPI
 #define CVPI 1
 
-# include "config.h"
+//# 
+//include "config.h"
 
 #ifndef CVPI_BASE
 #include "cvpi_base.h"
