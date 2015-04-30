@@ -10,6 +10,13 @@ program to crash.  All functions have been tested for stability but
 not all for correctness. All testing, so far, has been exclusive to
 the Raspberry Pi.
 
+The programs cvpi_sample_motion_detection.sh and
+cvpi_sample_motion_detection_continuous.sh require that `ImageMagick'
+be installed. cvpi_sample_motion_detection_continuous.sh requires that
+`feh' be installed.
+
+CVPI has only been successfully tested on Raspbian.
+
 The current Autotools build does not work.
 
 The project can be built with SCons. 
