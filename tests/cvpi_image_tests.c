@@ -131,6 +131,80 @@
       pointer = NULL;				\
       }} while(0)
 
+static CVPI_BOOL test_endianness_channel(TestImage** data, int channel) {
+#define TAKEDOWN test_endianness_channel_takedown
+  CVPI_BOOL return_value = CVPI_FALSE;
+  int BADSTATE = 0;
+  
+  VGImage input_image = VG_INVALID_HANDLE;
+  VGImage output_image = VG_INVALID_HANDLE;
+
+  input_image = vgCreateImage(CVPI_COLOR_SPACE, data[0]->width,
+			      data[0]->height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  cvpi_vg_error_check();
+  output_image = vgCreateImage(CVPI_COLOR_SPACE, data[1]->width,
+			       data[1]->height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  cvpi_vg_error_check();
+
+  vgImageSubData(input_image, data[0]->data, data[0]->stride, CVPI_COLOR_SPACE, 0, 0, data[0]->width, data[0]->height);
+  cvpi_vg_error_check();
+
+  switch (channel) {
+  case cvpi_pixel_red:
+    vgColorMatrix(output_image, input_image, cvpi_channel_red);
+    break;
+  case cvpi_pixel_green:
+    vgColorMatrix(output_image, input_image, cvpi_channel_green);
+    break;
+  case cvpi_pixel_blue:
+    vgColorMatrix(output_image, input_image, cvpi_channel_blue);
+    break;
+  case cvpi_pixel_alpha:
+    vgColorMatrix(output_image, input_image, cvpi_channel_alpha);
+    break;
+  default:
+    fprintf(stderr, "%s: Invalid channel", __func__);
+    goto TAKEDOWN;
+  }
+
+  cvpi_vg_error_check();
+
+  vgGetImageSubData(output_image, data[1]->data, data[1]->stride, CVPI_COLOR_SPACE, 0, 0, data[1]->width, data[1]->height);
+  cvpi_vg_error_check();
+  
+  vgFinish();
+  cvpi_vg_error_check();
+
+  return_value = CVPI_TRUE;
+
+ TAKEDOWN:
+  vgDestroyImageSafe(input_image);
+  cvpi_vg_error_takedown();
+
+  vgDestroyImageSafe(output_image);
+  cvpi_vg_error_takedown();
+
+  return return_value;
+
+#undef TAKEDOWN
+}
+
+CVPI_BOOL test_endianness_channel_red(TestImage** data) {
+  return test_endianness_channel(data, cvpi_pixel_red);
+}
+
+CVPI_BOOL test_endianness_channel_green(TestImage** data) {
+  return test_endianness_channel(data, cvpi_pixel_green);
+}
+
+CVPI_BOOL test_endianness_channel_blue(TestImage** data) {
+  return test_endianness_channel(data, cvpi_pixel_blue);
+}
+
+CVPI_BOOL test_endianness_channel_alpha(TestImage** data) {
+  return test_endianness_channel(data, cvpi_pixel_alpha);
+}
+
 CVPI_BOOL test_cvpi_pixel(void) {
 #define TAKEDOWN test_cvpi_pixel_takedown
   int BADSTATE = 0;
@@ -184,7 +258,7 @@ CVPI_BOOL test_cvpi_pixel(void) {
 #undef TAKEDOWN
 }
 
-CVPI_BOOL test_cvpi_yuyv2yuva() {
+CVPI_BOOL test_cvpi_yuyv2yuva(TestImage** data) {
 #define TAKEDOWN test_cvpi_yuyv2yuva_takedown
   int BADSTATE = 0;
   
