@@ -1,0 +1,64 @@
+#!/bin/sh
+
+# bin2channels pixel_width image_width input_image outfile...
+
+# pixel_width :: Number of bytes per pixel.
+
+# image_width :: Image width in pixels.
+
+# input_image :: A binary file.
+
+# outfile... :: One or more files to output to.
+
+# The nth file will get the nth pixel byte column. The number of
+# output files should match the pixel_width. If fewer output images
+# are specified, then unmatched columns will be skipped. If more
+# output images are specified, then the pixel_width+1'th file will
+# contain the first pixel byte column, skipping the first pixel;
+# similarly for any more files.
+
+script_dir=$(dirname $0)
+
+if [ $# -lt 4 ]
+then
+    echo "Incorrect number of arguments." > /dev/stderr;
+    exit 1;
+fi
+
+pixel_width=$1
+shift
+
+if [ -z $(printf "%d" $pixel_width | grep -e '^[1-9]\d*$') ]
+then
+    printf "Pixel width, %d, must be a decimal number.\n" $pixel_width > /dev/stderr
+    exit 1
+fi
+
+image_width=$1
+shift
+
+if [ -z $(printf "%d" $image_width | grep -e '^[1-9]\d*$') ]
+then
+    printf "Image width, %d, must be a decimal number.\n" $image_width > /dev/stderr
+    exit 1
+fi
+
+image=$1
+shift
+
+if ! { [ -e $image ] && { [ -f $image ] && [ -r $image ]; }; }
+then
+    printf "%s is not a readable file.\n" $image; > /dev/stderr
+    exit 1;
+fi
+
+to_split=`mktemp`
+
+# sed: remove the address column from od's output and remove blank lines, then turn it into a single line, then break at width
+od -v -t u1 $image | sed 's/^[[:digit:]]*[[:space:]]*\(\.*\)/\1/g' | sed '/^\s*$/d' | sed ':n;N;s/\n/ /; $!{b n}' | sed "s/\\(\\([[:digit:]]*[[:space:]]*\\)\\{$image_width\\}\\)/\\1\\n/g" > $to_split
+
+for start in $(seq 1 $#)
+do
+    # the first outfile will get data starting from the fist column; the second, data starting from the second column
+    awk -f $script_dir/splitChannels.awk -v start="$start" -v jump="$pixel_width" $to_split > $(echo $@ | awk -v val="$start" '{print $val}')
+done

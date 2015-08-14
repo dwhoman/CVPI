@@ -1,0 +1,106 @@
+#!/bin/sh
+
+# channels2bin output_file channel_file_1 [channel_file_2 [channel_file_3 [channel_file_4]]]
+
+script_dir=$(dirname $0)
+
+if [ $# -lt 2 ]
+then
+    echo "Too few arguments";
+    exit 1;
+fi
+
+output_file=$1
+shift
+
+if [ -e $output_file ]
+then
+    if ! [ -f $output_file ] && [ -w $output_file ]
+    then
+	printf "%s exists, but is not a writable file\n" $output_file > /dev/stderr
+	exit 1;
+    #else
+	# TODO ask Y/N question if -i option is set
+    fi
+fi
+
+for file in $@
+do
+    if ! { [ -e $file ] && { [ -f $file ] && [ -r $file ]; }; }
+    then
+	printf "%s is not a readable file.\n" $file; > /dev/stderr
+	exit 1;
+    fi
+done
+
+channel_file_1=$1
+shift
+
+channel_file_1_full=$(readlink -f $channel_file_1)
+
+channel_file_1_filtered=`mktemp`
+chmod g+r $channel_file_1_filtered
+
+# can't remove last line feed from files and files may or maynot have one, so add one using `echo'
+echo $(cat $channel_file_1_full) | sed '/^\s*$/d' > $channel_file_1_filtered
+
+awk_opts=
+if [ $# -ne 0 ]
+then
+    channel_file_2=$1
+    shift
+    channel_file_2_full=$(readlink -f $channel_file_2)
+
+    channel_file_2_filtered=`mktemp`
+    chmod g+r $channel_file_2_filtered
+
+    echo $(cat $channel_file_2_full) | sed '/^\s*$/d' > $channel_file_2_filtered
+    
+    awk_opts=" -v g_file='$channel_file_2_filtered'"
+fi
+
+if [ $# -ne 0 ]
+then
+    channel_file_3=$1
+    shift
+    channel_file_3_full=$(readlink -f $channel_file_3)
+
+    channel_file_3_filtered=`mktemp`
+    chmod g+r $channel_file_3_filtered
+
+    echo $(cat $channel_file_3_full) | sed '/^\s*$/d' > $channel_file_3_filtered
+
+    awk_opts="$awk_opts -v b_file='$channel_file_3_filtered'"
+fi
+
+if [ $# -ne 0 ]
+then
+    channel_file_4=$1
+    shift
+    channel_file_4_full=$(readlink -f $channel_file_4)
+
+    channel_file_4_filtered=`mktemp`
+    chmod g+r $channel_file_4_filtered
+
+    echo $(cat $channel_file_4_full) | sed '/^\s*$/d' > $channel_file_4_filtered
+    
+    awk_opts="$awk_opts -v a_file='$channel_file_4_filtered'"
+fi
+
+# TODO store output to a file, output could exceed max variable size
+one_line=$(awk -f $script_dir/channelFilesCombine.awk $awk_opts $channel_file_1_filtered)
+exit_code=$?
+if test $exit_code -eq 0
+then
+
+    itter=0
+    for data in $one_line
+    do
+	dd if=$script_dir/dd_lookup_table of=$output_file bs=1 skip=$data count=1 seek=$itter > /dev/null 2> /dev/null
+	itter=$(($itter + 1))
+    done
+	     
+else
+    echo "AWK returned an error" > /dev/stderr
+    exit 1
+fi
