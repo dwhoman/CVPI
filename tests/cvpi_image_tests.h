@@ -24,11 +24,28 @@
 #include "cvpi.h"
 #endif
 
+typedef struct {
+  FILE* file;
+  VGboolean writable;
+  VGint width;
+  VGint stride;
+  VGint height;
+  char data[];  
+} TestImage;
+
 /* cvpi_pixel */
 CVPI_BOOL test_cvpi_pixel(void);
 
+CVPI_BOOL test_endianness_channel_red(TestImage**);
+
+CVPI_BOOL test_endianness_channel_green(TestImage**);
+
+CVPI_BOOL test_endianness_channel_blue(TestImage**);
+
+CVPI_BOOL test_endianness_channel_alpha(TestImage** data);
+
 /* cvpi_yuyv2yuva */
-CVPI_BOOL test_cvpi_yuyv2yuva(void);
+CVPI_BOOL test_cvpi_yuyv2yuva(TestImage**);
 
 /* cvpi_image_add */
 CVPI_BOOL test_cvpi_image_add_odd(void);
