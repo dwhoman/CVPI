@@ -1,0 +1,123 @@
+#!/bin/dash
+# -*- eval: (sh-set-shell "posix") -*-
+
+# bin2channels pixel_width image_width input_image outfile...
+
+# pixel_width :: Number of bytes per pixel.
+
+# image_width :: Image width in pixels.
+
+# input_image :: A binary file.
+
+# outfile... :: One or more files to output to.
+
+# The nth file will get the nth pixel byte column. The number of
+# output files should match the pixel_width. If fewer output images
+# are specified, then unmatched columns will be skipped. If more
+# output images are specified, then the pixel_width+1'th file will
+# contain the first pixel byte column, skipping the first pixel;
+# similarly for any more files.
+
+script_dir=$(dirname $0)
+interactive=0
+gnu=0
+
+if [ $# -lt 4 ]
+then
+    echo "Incorrect number of arguments." > /dev/stderr;
+    exit 1;
+fi
+
+while getopts :ig OPT; do
+    case $OPT in
+	i|+i)
+	    interactive=1
+	    ;;
+	g|+g)
+	    gnu=1
+	    ;;
+	*)
+	    echo "usage: `basename $0` [+-ig} [--] ARGS..."
+	    exit 2
+    esac
+done
+shift $(( OPTIND - 1 ))
+OPTIND=1
+
+pixel_width=$1
+shift
+
+if [ -z $(printf "%d" $pixel_width | grep -e '^[1-9][0-9]*$') ]
+then
+    printf "Pixel width, %d, must be a decimal number.\n" $pixel_width > /dev/stderr
+    exit 1
+fi
+
+image_width=$1
+shift
+
+if [ -z $(printf "%d" $image_width | grep -e '^[1-9][0-9]*$') ]
+then
+    printf "Image width, %d, must be a decimal number.\n" $image_width > /dev/stderr
+    exit 1
+fi
+
+image=$1
+shift
+
+if ! { [ -e $image ] && { [ -f $image ] && [ -r $image ]; }; }
+then
+    printf "%s is not a readable file.\n" $image; > /dev/stderr
+    exit 1;
+fi
+
+for file in $@
+do
+    if ! [ -f $file ] && [ -w $file ]
+    then
+	printf "%s exists, but is not a writable file\n" $file > /dev/stderr
+	exit 1;
+    else
+	if [ $interactive -eq 1 ]
+	then
+	    printf "%s exists, overwrite? [Y/N]: " $file
+	    while read -r response
+	    do
+		case $response in
+		    y|Y)
+			break
+			;;
+		    n|N)
+			echo "Aborting" > /dev/stderr
+			exit 1
+			;;
+		    *)
+			printf "Invalid reponse %s. Overwite? [Y/N]: " $response
+			;;
+		esac
+	    done
+	fi
+    fi
+done
+
+to_split=`mktemp`
+trap "rm -f $to_split" EXIT INT TERM
+
+width=$(($image_width * $pixel_width))
+
+if [ $gnu -eq 1 ]
+then
+    od -An -v -t x1 -w$width $image > $to_split
+else
+    # sed: turn od's output into a single line, then break at image_width * pixel_width
+    od -An -v -t x1 $image | sed ':n;N;s/\n/ /; $!{b n}' | sed "s/[[:space:]]*\\(\\([0-9a-fA-F]*[[:space:]]*\\)\\{$width\\}\\)/\\1\\n/g" > $to_split
+fi
+start=1
+while [ $start -le $# ]
+do
+    # the first outfile will get data starting from the fist column; the second, data starting from the second column
+    awk -f $script_dir/splitChannels.awk -v start="$start" -v jump="$pixel_width" $to_split > $(echo $@ | awk -v val="$start" '{print $val}')
+    start=$(($start + 1))
+done
+
+exit 0

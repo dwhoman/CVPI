@@ -1,0 +1,3 @@
+[submodule "make-grep"]
+	path = tests/make-grep
+	url = ../../make-grep/

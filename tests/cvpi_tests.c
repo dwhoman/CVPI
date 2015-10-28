@@ -197,7 +197,7 @@ int test_runner(CVPI_BOOL(*test_function)(TestImage** data), char* file_path, in
 
   if(file_path != NULL) {
     FILE* settings_file = NULL;
-    
+
     TestImage* data[file_length + 1];
     for(int i = 0; i <= file_length; ++i) {
       data[i] = NULL;
@@ -220,7 +220,7 @@ int test_runner(CVPI_BOOL(*test_function)(TestImage** data), char* file_path, in
     char* height_s = NULL;
     char* rw = NULL;
     char* line_dup = NULL;
-    
+
     /* populate data array with file data */
     for(int i = 0; -1 != getline(&line, &len, settings_file); ++i) {
       line_dup = strdup(line);
@@ -229,16 +229,16 @@ int test_runner(CVPI_BOOL(*test_function)(TestImage** data), char* file_path, in
       width_s = strtok(NULL, ",");
       height_s = strtok(NULL, ",");
       rw = strtok(NULL, ",");
-      
+
       if(image_file_path == NULL || format_s == NULL || width_s == NULL || height_s == NULL || rw == NULL) {
 	fprintf(stderr, "Incomplete settings file\n");
 	BADSTATE = CVPI_TRUE;
 	goto test_runner_takedown;
       }
-      
+
       long width = strtol(width_s, NULL, 10);
       long height = strtol(height_s, NULL, 10);
-      
+
       if(width <= 0) {
 	fprintf(stderr, "Bad width: %d", width);
 	BADSTATE = CVPI_TRUE;
@@ -266,7 +266,7 @@ int test_runner(CVPI_BOOL(*test_function)(TestImage** data), char* file_path, in
 	  goto test_runner_takedown;
 	}
       }
-      
+
       long file_size = height * stride;
       data[i] = malloc(sizeof(TestImage) + file_size);
       if(data[i] == NULL) {
@@ -306,7 +306,7 @@ int test_runner(CVPI_BOOL(*test_function)(TestImage** data), char* file_path, in
 	if(input_size != fread(data[i]->data, 1, input_size, data[i]->file)) {
 	  fprintf(stderr, "Failed to correctly read input file\n", input_size, file_size);
 	  BADSTATE = CVPI_TRUE;
-	  goto test_runner_takedown;	  
+	  goto test_runner_takedown;
 	}
 
 	break;
@@ -345,7 +345,7 @@ int test_runner(CVPI_BOOL(*test_function)(TestImage** data), char* file_path, in
 	  if(data[k]->file != NULL && fclose(data[k]->file)) {
 	    fprintf(stderr, "failed to close file, errno = %d\n", errno);
 	  }
-	
+
 	  /* free memory */
 	  free(data[k]);
 	  data[k] = NULL;
@@ -421,7 +421,7 @@ int main(int argc, char** argv) {
   TEST(test_endianness_channel_green);
   TEST(test_endianness_channel_blue);
   TEST(test_endianness_channel_alpha);
-  
+
  /*  TEST(test_cvpi_pixel); */
 
  /*  TEST(test_vgConvolveNoShift); */
