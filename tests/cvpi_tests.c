@@ -224,11 +224,19 @@ int test_runner(CVPI_BOOL(*test_function)(TestImage** data), char* file_path, in
     /* populate data array with file data */
     for(int i = 0; -1 != getline(&line, &len, settings_file); ++i) {
       line_dup = strdup(line);
+<<<<<<< HEAD
       image_file_path = strtok(line_dup, ',');
       format_s = strtok(NULL, ',');
       width_s = strtok(NULL, ',');
       height_s = strtok(NULL, ',');
       rw = strtok(NULL, ',');
+=======
+      image_file_path = strtok(line_dup, ",");
+      format_s = strtok(NULL, ",");
+      width_s = strtok(NULL, ",");
+      height_s = strtok(NULL, ",");
+      rw = strtok(NULL, ",");
+>>>>>>> 507ae575b90b879d6dceddf25047df9ce4a96da9
       
       if(image_file_path == NULL || format_s == NULL || width_s == NULL || height_s == NULL || rw == NULL) {
 	fprintf(stderr, "Incomplete settings file\n");

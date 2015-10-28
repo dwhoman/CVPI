@@ -112,7 +112,7 @@ then
     done
 fi
 
-#echo "inputs: $@" > /dev/stderr
+echo "inputs: $@" > /dev/stderr
 trap "close_fds" EXIT INT TERM
 i=3
 for file in $@
@@ -136,11 +136,11 @@ do
     for file in $@
     do
 
-	#echo "k $k" > /dev/stderr
+	echo "k $k" > /dev/stderr
 	eval read -r "<&$k line"
 	k=$(($k + 1))
 
-	#echo "line $line" > /dev/stderr
+	echo "line $line" > /dev/stderr
 
 	j=1
 	while [ $j -le $field_num ]
@@ -149,7 +149,7 @@ do
 	    #echo "data:" $data > /dev/stderr
 
 	    seek=$(($(($i-1)) * $field_num * $# + $(($j-1)) * $# + $channel))
-	    #printf "i: %d\nrecord_num: %d\nj: %d\nfield_num: %d\nchannel: %d\nchannels %d\nseek: %d\n" $i $record_num $j $field_num $channel $# $seek > /dev/stderr
+	    printf "i: %d\nrecord_num: %d\nj: %d\nfield_num: %d\nchannel: %d\nchannels %d\nseek: %d\n" $i $record_num $j $field_num $channel $# $seek > /dev/stderr
 	    echo "$seek dd if=$dd_lookup_table of=$output_file_full bs=1 skip=$data count=1 seek=$seek > /dev/null 2> /dev/null" >> $instruction_list
 	    j=$(($j + 1))
 	done
@@ -163,9 +163,11 @@ do
     # entire input line at a time and saving the location for the next read
     sort -n $instruction_list | cut -d " " -f 2- | while read -r instruction
     do
+	echo "$instruction" > /dev/stderr
 	eval "$instruction"
     done
     # clear the file
     cat /dev/null > $instruction_list    
+    echo "--------------------------" > /dev/stderr
 done
 exit 0
