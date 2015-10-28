@@ -18,6 +18,10 @@ close_fds() {
     done
 }
 
+hex2dec() {
+    printf "%d" $(printf "0x%s" $1)
+}
+
 if [ $# -lt 2 ]
 then
     echo "Too few arguments" > /dev/stderr;
@@ -133,7 +137,7 @@ while [ $i -le $record_num ]
 do
     k=3
     channel=0
-    for file in $@
+    while [ $channel -lt $# ]
     do
 
 	echo "k $k" > /dev/stderr
@@ -145,7 +149,7 @@ do
 	j=1
 	while [ $j -le $field_num ]
 	do
-	    data=$(printf "%d" $(printf "0x%s" $(echo $line | awk "{ print \$$j }")))
+	    data=$(hex2dec $(echo $line | awk "{ print \$$j }"))
 	    #echo "data:" $data > /dev/stderr
 
 	    seek=$(($(($i-1)) * $field_num * $# + $(($j-1)) * $# + $channel))
