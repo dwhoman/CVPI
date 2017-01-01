@@ -1,0 +1,44 @@
+Using org mode tables to create image data that is then given to Emacs
+Calc.
+* core lisp
+  #+BEGIN_SRC emacs-lisp
+(defun org-table->calc-matrix (table)
+  (append '(vec)	
+	(mapcar #'(lambda (row)
+		    (append '(vec) row))
+		table)))
+
+(defun calc-matrix->hex-dump (matrix &optional file)
+  (let ((file-name (or file (make-temp-file
+			     (expand-file-name "hex-dump"
+					       (or small-temporary-file-directory
+						   temporary-file-directory)))))
+	(retval))
+    (with-temp-buffer
+      (setq retval
+	    (mapcar #'(lambda (vector)
+			(prog1
+			    (mapcar #'(lambda (number)
+					(let ((value (format "%02x" number)))
+					  (insert value)
+					  (insert " ")
+					  value))
+				    (cdr vector))
+			  (insert "\n")))
+		    (cdr matrix)))
+      (delete-trailing-whitespace)
+      (write-file file-name))
+    retval))
+  #+END_SRC
+  
+  #+NAME: table-21
+  | 1 | 3 |
+  | 2 | 4 |
+
+  #+BEGIN_SRC emacs-lisp :var x=table-21 :results verbatim
+(calc-matrix->hex-dump (org-table->calc-matrix x))
+  #+END_SRC
+
+  #+RESULTS:
+  : (("01" "03") ("02" "04"))
+* input data

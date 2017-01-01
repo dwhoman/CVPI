@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cmake -DCVPI_ASSEMBLY=T -DHAVE_BCM_HOST=T -DCVPI_CAREFUL=T -DCVPI_LOGGING=1 -DCMAKE_C_FLAGS="-g -std=gnu99 ${CFLAGS}" .
+
+make

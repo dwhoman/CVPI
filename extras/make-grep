@@ -1,0 +1,116 @@
+#!/bin/sh
+
+# This file is part of CVPI.
+#
+# Copyright (C) 2015 Devin Homan
+#
+# This program is free software: you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public License
+# as published by the Free Software Foundation, either version 3 of
+# the License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# using a makefile to select and run tests
+
+# allow the user to select goals using globbing or regular-expressions
+
+# options not used by make: -acDEFgGhHJmMPQuUVxyYzZ, 
+
+# relevant options used by grep: unused by make: -EFGPxy  used by make: fivw
+# y can be used in place of i
+
+# not using grep's Generic Program Information, General Output Control, 
+# Ouput Line Prefix Control, Context Line Control, Context Line Control, or Other options
+
+# only using grep's Matcher Selection and Matching Control Options
+
+# options unused by make or grep: acDghHJKmMNQTuUVXYzZ
+# use -v for grep -v : invert match, no need to output make's version
+# use -u for grep -w : word-regexp
+# use -h for grep -f : pattern file
+# use -g for grep -e : pattern
+
+# pass other options to grep and make
+#       Make options                           Grep options, make-grep options
+getopts bmBC:def:iI:j:kl:Lno:O:pqrRsStwW:NXT:K:EFGPxyvuh:g:JZVQ
+
+# -N and -X options used by FreeBSD make
+# -Z --decompress and -J --bz2decompress used by FreeBSD grep
+
+# -T used by NetBSD bmake, -V not being used (used for querying variables)
+
+# OpenSolaris make
+# --dd
+# --DD
+# -K statefile
+# -P prints dependencies, option used by grep, 
+
+# tmake tmake.sourceforge.net
+# --template=type
+# --lib
+# --unix
+# --win32
+
+# grep long options
+# --extended-regexp
+# --fixed-strings
+# --basic-regexp
+# --perl-regexp
+# --regexp=PATTERN
+# --file=FILE
+# --ignore-case
+# --invert-match
+# --word-regexp
+# --line-regexp
+
+# make long options
+# --always-make
+# --directory=dir
+# --debug[=FLAGS]
+# --environment-overrides
+# --file=file
+# --makefile=FILE
+# --ignore-errors
+# --include-dir=dir
+# --jobs[=jobs]
+# --keep-going
+# --load-average[=load]
+# --check-symlink-times
+# --just-print
+# --dry-run
+# --recon
+# --old-file=file
+# --assume-old=file
+# --output-sync[=type]
+# --print-data-base
+# --question
+# --no-builtin-rules
+# --no-builtin-variables
+# --silent
+# --quiet
+# --no-keep-going
+# --stop
+# --touch
+# --trace
+# --print-directory
+# --no-print-directory
+# --what-if=file
+# --new-file=file
+# --assume-new=file
+# --warn-undefined-variables
+# 
+
+# make-grep options
+# -V --version :: Output the version number of make-grep and exit.
+# --help :: Output a usage message and exit
+# -Q --quiet :: Do not write anything to standard output
+
+$OPTIND # name and index of next argument
+$OPTARG # options given by user

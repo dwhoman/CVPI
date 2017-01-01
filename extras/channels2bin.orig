@@ -1,0 +1,191 @@
+#!/bin/dash
+# -*- eval: (sh-set-shell "posix") -*-
+
+# channels2bin [-i] output_file channel_file...
+
+# channels2bin takes one or more input text files consisting of
+# tabular data and a file name to output binary data.
+
+script_dir=$(dirname $0)
+interactive=0
+
+close_fds() {
+    i=3
+    for file in $@
+    do
+	eval exec "$i<&-"
+	i=$(($i + 1))
+    done
+}
+
+hex2dec() {
+    printf "%d" $(printf "0x%s" $1)
+}
+
+if [ $# -lt 2 ]
+then
+    echo "Too few arguments" > /dev/stderr;
+    exit 1;
+fi
+
+while getopts :ic OPT; do
+    case $OPT in
+	i|+i)
+	    interactive=1
+	    ;;
+	c|+c)
+	    check_dims=1
+	    ;;
+	*)
+	    echo "usage: `basename $0` [+-ci} [--] ARGS..."
+	    exit 2
+    esac
+done
+shift $(( OPTIND - 1 ))
+OPTIND=1
+
+output_file=$1
+shift
+
+if [ -e $output_file ]
+then
+    if ! [ -f $output_file ] && [ -w $output_file ]
+    then
+	printf "%s exists, but is not a writable file\n" $output_file > /dev/stderr
+	exit 1;
+    else
+	if [ $interactive -eq 1 ]
+	then
+	    printf "%s exists, overwrite? [Y/N]: " $output_file
+	    while read -r response
+	    do
+		case $response in
+		    y|Y)
+			break
+			;;
+		    n|N)
+			echo "Aborting" > /dev/stderr
+			exit 1
+			;;
+		    *)
+			printf "Invalid reponse %s. Overwite? [Y/N]: " $response
+			;;
+		esac
+	    done
+	fi
+    fi
+fi
+
+for file in $@
+do
+    if ! { [ -e $file ] && { [ -f $file ] && [ -r $file ]; }; }
+    then
+	printf "%s is not a readable file.\n" $file; > /dev/stderr
+	exit 1;
+    fi
+done
+
+field_num=$(awk 'NR == 1 { print NF; exit }' $1)
+record_num=$(grep -c -v -e '^[[:space:]]*$' $1)
+
+# often the last line is blank, ignore it
+if [ ${#check_dims} -ne 0 ]
+then
+    # check that all of the files are the same dimension
+    for file in $@
+    do
+	rn=$(grep -c -v -e '^[[:space:]]*$' $file)
+
+	if [ $rn -ne $record_num ]
+	then
+	    printf "%s and %s have mismatched number of lines\n" $1 $file > /dev/stderr
+	    exit 1
+	fi
+
+	i=1
+	while [ $i -le $rn ]
+	do
+	    fn=$(grep -v -e '^[[:space:]]*$' $file | awk "NR == $i { print NF; exit}")
+	    if [ $fn -ne $field_num ]
+	    then
+		printf "%s and %s have mismatched number of fields %d and %s\n" $1 $file $field_num $fn > /dev/stderr
+		exit 1
+	    fi
+	    i=$(($i + 1))
+	done
+    done
+fi
+
+<<<<<<< HEAD:tests/channels2bin
+echo "inputs: $@" > /dev/stderr
+=======
+#echo "inputs: $@" > /dev/stderr
+#echo "argnum: $#" > /dev/stderr
+>>>>>>> c1f527585cf12535e5b9ebc9dc6be9a817f29ea2:extras/channels2bin
+trap "close_fds" EXIT INT TERM
+i=3
+for file in $@
+do
+    eval exec "$i< $file"
+    i=$(($i + 1))
+done
+
+instruction_list=`mktemp`
+trap "rm -f $instruction_list" EXIT INT TERM
+
+output_file_full=$(readlink -f $output_file)
+dd_lookup_table=$(readlink -f $script_dir/dd_lookup_table)
+
+i=1
+IFS=''				# read an entire line
+while [ $i -le $record_num ]
+do
+    k=3
+    channel=0
+    while [ $channel -lt $# ]
+    do
+
+	echo "k $k" > /dev/stderr
+	eval read -r "<&$k line"
+	k=$(($k + 1))
+
+	echo "line $line" > /dev/stderr
+
+	j=1
+	while [ $j -le $field_num ]
+	do
+	    data=$(hex2dec $(echo $line | awk "{ print \$$j }"))
+	    #echo "data:" $data > /dev/stderr
+
+	    seek=$(($(($i-1)) * $field_num * $# + $(($j-1)) * $# + $channel))
+	    printf "i: %d\nrecord_num: %d\nj: %d\nfield_num: %d\nchannel: %d\nchannels %d\nseek: %d\n" $i $record_num $j $field_num $channel $# $seek > /dev/stderr
+	    echo "$seek dd if=$dd_lookup_table of=$output_file_full bs=1 skip=$data count=1 seek=$seek > /dev/null 2> /dev/null" >> $instruction_list
+	    j=$(($j + 1))
+	done
+	channel=$(($channel + 1))
+    done
+    i=$(($i + 1))
+
+    # dd has to insert bytes into the output in order; it cannot jump
+    # around; data is out of order due to channels being processed
+    # before pixel columns, but this way the the program is reading an
+    # entire input line at a time and saving the location for the next read
+    sort -n $instruction_list | cut -d " " -f 2- | while read -r instruction
+    do
+<<<<<<< HEAD:tests/channels2bin
+	echo "$instruction" > /dev/stderr
+	eval "$instruction"
+    done
+    # clear the file
+    cat /dev/null > $instruction_list    
+    echo "--------------------------" > /dev/stderr
+=======
+	#echo "$instruction" > /dev/stderr
+	eval "$instruction"
+    done
+    # clear the file
+    cat /dev/null > $instruction_list
+    #echo "--------------------" > /dev/stderr
+>>>>>>> c1f527585cf12535e5b9ebc9dc6be9a817f29ea2:extras/channels2bin
+done
+exit 0
