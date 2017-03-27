@@ -1,4 +1,4 @@
-FILE(REMOVE_RECURSE
+file(REMOVE_RECURSE
   "CMakeFiles/cvpi-aux.dir/cvpi_camera_setup.c.o"
   "CMakeFiles/cvpi-aux.dir/cvpi_egl_surface_functions.c.o"
   "libcvpi-aux.pdb"
@@ -6,6 +6,6 @@ FILE(REMOVE_RECURSE
 )
 
 # Per-language clean rules from dependency scanning.
-FOREACH(lang C)
-  INCLUDE(CMakeFiles/cvpi-aux.dir/cmake_clean_${lang}.cmake OPTIONAL)
-ENDFOREACH(lang)
+foreach(lang C)
+  include(CMakeFiles/cvpi-aux.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

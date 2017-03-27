@@ -1,4 +1,4 @@
-FILE(REMOVE_RECURSE
+file(REMOVE_RECURSE
   "CMakeFiles/cvpi.dir/cvpi_base.c.o"
   "CMakeFiles/cvpi.dir/cvpi_egl_config.c.o"
   "CMakeFiles/cvpi.dir/cvpi_image_functions.c.o"
@@ -9,6 +9,6 @@ FILE(REMOVE_RECURSE
 )
 
 # Per-language clean rules from dependency scanning.
-FOREACH(lang C)
-  INCLUDE(CMakeFiles/cvpi.dir/cmake_clean_${lang}.cmake OPTIONAL)
-ENDFOREACH(lang)
+foreach(lang C)
+  include(CMakeFiles/cvpi.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()
