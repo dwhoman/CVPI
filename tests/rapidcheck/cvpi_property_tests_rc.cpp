@@ -16,62 +16,32 @@ extern "C" {
 #include <utility>
 #include <cmath>
 
-const uint32_t MAX_SIZE = EGL_CONFIG_MAX_WIDTH * EGL_CONFIG_MAX_HEIGHT;
-const uint32_t max_vec_length = 50;
+const int MAX_WIDTH = 500;
+const int MAX_HEIGHT = 500;
 
-std::vector<std::pair<uint32_t, uint32_t>> factors(uint32_t size) {
-  std::vector<std::pair<uint32_t, uint32_t>> ret_val = {};
-  for(uint32_t width = 1; width <= size && width <= EGL_CONFIG_MAX_WIDTH; ++width) {
-    if(size % width == 0) {
-      uint32_t height = size/width;
-      if(height <= EGL_CONFIG_MAX_HEIGHT) {
-	ret_val.push_back(std::pair<uint32_t, uint32_t>(width, height));
-      }
-    }
-  }
+// EGL_CONFIG_MAX_WIDTH * EGL_CONFIG_MAX_HEIGHT;
+const int MAX_SIZE = MAX_WIDTH * MAX_HEIGHT;
 
-  return ret_val;
-}
+struct Dimensions {
+  uint32_t width;
+  uint32_t height;
+};
 
-// struct UINT32_T {
-//   uint32_t val;
-// };
-
-// namespace rc {
-//   template<>
-//   struct Arbitrary<UINT32_T> {
-//     static Gen<UINT32_T> arbitrary() {
-//       return gen::build<UINT32_T>(
-// 				  gen::set(&UINT32_T::val, gen::inRange(0, max_vec_length)));
-//     });
-// }
-// };
-
-// } // namespce rc
+namespace rc {
+  template<>
+  struct Arbitrary<Dimensions> {
+    static Gen<Dimensions> arbitrary() {
+      return gen::build<Dimensions>(gen::set(&Dimensions::width, gen::inRange(1, MAX_WIDTH + 1)),
+				    gen::set(&Dimensions::height, gen::inRange(1, MAX_HEIGHT + 1)));
+    };
+  };
+};
 
 int main(int argc, char **argv) {
-  std::cout << "In main" << std::endl;
-  rc::check("add images", [](const std::vector<uint32_t> &image_array_combined){
-      RC_PRE(image_array_combined.size() > 1);
-
-      if(image_array_combined.size() % 2 != 0) {
-	image_array_combined.push_back(0);
-      }
-
-      uint32_t data_length = image_array_combined.size()/2;
-
-      uint32_t *image_data_1 = &image_array_combined[0];
-      uint32_t *image_data_2 = &image_array_combined[data_length];
-
-      std::vector<std::pair<uint32_t, uint32_t>> dims = factors(data_length);
-      // make sure that there are image dimensions to choose from
-      RC_PRE(dims.size() > 0);
-
-      // TODO: make the index variable
-      uint32_t image_width = dims.back().first;
-      uint32_t image_height = dims.back().second;
-
-      // std::cout << "Setting up EGL" << std::endl;
+  rc::check("add images", [](const std::array<uint32_t, MAX_SIZE> &image_data_1,
+			     const std::array<uint32_t, MAX_SIZE> &image_data_2,
+			     const Dimensions &dimensions){
+	      //std::cout << "Setting up EGL" << std::endl;
 
       // begin CVPI setup
       cvpi_egl_settings settings = cvpi_egl_settings_create();
@@ -142,31 +112,32 @@ int main(int argc, char **argv) {
 	RC_FAIL("cvpi_egl_instance creation failed.");
       }
       // end CVPI setup
+      //std::cout << "EGL setup" << std::endl;
 
-      uint32_t *cvpi_out = malloc(CVPI_PIXEL_BYTES * image_width * image_height);
+      uint32_t *cvpi_out = malloc(CVPI_PIXEL_BYTES * dimensions.width * dimensions.height);
       cv::Mat cv_out;
 
-      VGImage image1 = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height,VG_IMAGE_QUALITY_NONANTIALIASED);
-      VGImage image2 = vgCreateImage(CVPI_COLOR_SPACE, image_width, image_height,VG_IMAGE_QUALITY_NONANTIALIASED);
+      VGImage image1 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
+      VGImage image2 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
       vgFinish();
-      vgImageSubData(image1, &image_data_1, image_width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, image_width, image_height);
-      vgImageSubData(image2, &image_data_2, image_width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, image_width, image_height);
+      vgImageSubData(image1, &image_data_1, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
+      vgImageSubData(image2, &image_data_2, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
       vgFinish();
       VGImage cvpi_sum = cvpi_image_add(image1, image2, 1, 1, 1, 0);
       vgFinish();
-      vgGetImageSubData(cvpi_sum, cvpi_out, CVPI_PIXEL_BYTES*image_width, CVPI_COLOR_SPACE, 0, 0, image_width, image_height);
+      vgGetImageSubData(cvpi_sum, cvpi_out, CVPI_PIXEL_BYTES*dimensions.width, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
       vgFinish();
       vgDestroyImage(image1);
       vgDestroyImage(image2);
       vgDestroyImage(cvpi_sum);
 
       // OpenCV calculation
-      cv::Mat cv_image_1 = cv::Mat(image_height, image_width, CV_8UC4, &image_data_1);
-      cv::Mat cv_image_2 = cv::Mat(image_height, image_width, CV_8UC4, &image_data_2);
+      cv::Mat cv_image_1 = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, &image_data_1);
+      cv::Mat cv_image_2 = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, &image_data_2);
 
       cv::add(cv_image_1, cv_image_2, cv_out);
 
-      cv::Mat cvpi_sum_mat = cv::Mat(image_height, image_width, CV_8UC4, cvpi_out);
+      cv::Mat cvpi_sum_mat = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, cvpi_out);
 
       bool success = false;
       if(cvpi_sum_mat.rows == cv_out.rows) {

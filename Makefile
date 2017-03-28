@@ -137,17 +137,30 @@ cvpi-aux/fast:
 .PHONY : cvpi-aux/fast
 
 #=============================================================================
-# Target rules for targets named cvpi_tests
+# Target rules for targets named cvpi_tests_hyp
 
 # Build rule for target.
-cvpi_tests: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 cvpi_tests
-.PHONY : cvpi_tests
+cvpi_tests_hyp: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 cvpi_tests_hyp
+.PHONY : cvpi_tests_hyp
 
 # fast build rule for target.
-cvpi_tests/fast:
-	$(MAKE) -f tests/CMakeFiles/cvpi_tests.dir/build.make tests/CMakeFiles/cvpi_tests.dir/build
-.PHONY : cvpi_tests/fast
+cvpi_tests_hyp/fast:
+	$(MAKE) -f tests/hypothesis/CMakeFiles/cvpi_tests_hyp.dir/build.make tests/hypothesis/CMakeFiles/cvpi_tests_hyp.dir/build
+.PHONY : cvpi_tests_hyp/fast
+
+#=============================================================================
+# Target rules for targets named cvpi_tests_rapid
+
+# Build rule for target.
+cvpi_tests_rapid: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 cvpi_tests_rapid
+.PHONY : cvpi_tests_rapid
+
+# fast build rule for target.
+cvpi_tests_rapid/fast:
+	$(MAKE) -f tests/rapidcheck/CMakeFiles/cvpi_tests_rapid.dir/build.make tests/rapidcheck/CMakeFiles/cvpi_tests_rapid.dir/build
+.PHONY : cvpi_tests_rapid/fast
 
 #=============================================================================
 # Target rules for targets named rapidcheck
@@ -159,7 +172,7 @@ rapidcheck: cmake_check_build_system
 
 # fast build rule for target.
 rapidcheck/fast:
-	$(MAKE) -f rapidcheck_lib/CMakeFiles/rapidcheck.dir/build.make rapidcheck_lib/CMakeFiles/rapidcheck.dir/build
+	$(MAKE) -f tests/rapidcheck_lib/CMakeFiles/rapidcheck.dir/build.make tests/rapidcheck_lib/CMakeFiles/rapidcheck.dir/build
 .PHONY : rapidcheck/fast
 
 # Help Target
@@ -172,7 +185,8 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... cvpi"
 	@echo "... cvpi-aux"
-	@echo "... cvpi_tests"
+	@echo "... cvpi_tests_hyp"
+	@echo "... cvpi_tests_rapid"
 	@echo "... rapidcheck"
 .PHONY : help
 
