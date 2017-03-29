@@ -290,6 +290,14 @@ VGImage cvpi_yuyv2yuva(const VGImage yuyv_image) {
 #undef TAKEDOWN
 }
 
+VGImage cvpi_image_add_vert(const VGImage img1, const VGImage img2, VGshort a, VGshort b, VGfloat scale, VGfloat bias) {
+  /* add images by interlacing them row by row */
+}
+
+VGImage cvpi_image_add_horiz(const VGImage img1, const VGImage img2, VGshort a, VGshort b, VGfloat scale, VGfloat bias) {
+  /* add images by interlacing them column by column */
+}
+
 VGImage cvpi_image_add(const VGImage img1, const VGImage img2, VGshort a, VGshort b, VGfloat scale, VGfloat bias) {
 /* add_images adds two images by adding the upper halves and the lower
    halves separately.  Done this way so that the intermediate image
@@ -298,12 +306,14 @@ VGImage cvpi_image_add(const VGImage img1, const VGImage img2, VGshort a, VGshor
   int BADSTATE = 0;
 
   VGImage output = VG_INVALID_HANDLE;
-  VGImage half = VG_INVALID_HANDLE;			/* image half original */
-  VGImage half_c = VG_INVALID_HANDLE;		        /* image half convolved */
-  VGImage last_row = VG_INVALID_HANDLE;
-  VGImage last_row_c = VG_INVALID_HANDLE;		/* last row convolved */
-  VGImage both = VG_INVALID_HANDLE;
-  VGImage added = VG_INVALID_HANDLE;
+  VGImage half_img1 = VG_INVALID_HANDLE;			/* image half original */
+  VGImage half_img2 = VG_INVALID_HANDLE;
+  VGImage half_added = VG_INVALID_HANDLE;
+  /* if a tall image has an odd value height, add last row separately */
+  VGImage l_row_img = VG_INVALID_HANDLE;
+  VGImage l_row_added = VG_INVALID_HANDLE; 
+  VGImage both = VG_INVALID_HANDLE;        /* both images combined into a single image */
+  VGImage added = VG_INVALID_HANDLE;	   /* sum of the two images */
 
   VGint img1_width = vgGetParameteri(img1, VG_IMAGE_WIDTH);
 #if CVPI_CAREFUL == 1
@@ -333,138 +343,102 @@ VGImage cvpi_image_add(const VGImage img1, const VGImage img2, VGshort a, VGshor
   VGshort kernel[2] = {b,a};	/* only place where `a' and `b' are used */
   unsigned long itter = 0;
   output = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#if CVPI_CAREFUL == 1
   cvpi_vg_error_check();
-
+#endif
   VGint imageMaxHeight = vgGeti(VG_MAX_IMAGE_HEIGHT);
+#if CVPI_CAREFUL == 1
   cvpi_vg_error_check();
-  
+#endif
   if(2*img1_height > imageMaxHeight) {
-    VGint max;
-    if(!(img1_height % 2)) { 	/* even height */
-      half = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+    VGint half_height = img1_height/2;
+    half_img1 = vgCreateImage(CVPI_COLOR_SPACE, img1_width, half_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#if CVPI_CAREFUL == 1
       cvpi_vg_error_check();
-
-      half_c = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#endif
+    half_img2 = vgCreateImage(CVPI_COLOR_SPACE, img1_width, half_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#if CVPI_CAREFUL == 1
       cvpi_vg_error_check();
+#endif
 
-      max = img1_height;
-    } else {                      /* odd height */
-      last_row = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2, VG_IMAGE_QUALITY_NONANTIALIASED);
+    /* add top halves */
+    vgCopyImage(half_img1, 0, 0, img1, 0, 0, img1_width, half_height, VG_FALSE);
+#if CVPI_CAREFUL == 1
       cvpi_vg_error_check();
-      last_row_c = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2, VG_IMAGE_QUALITY_NONANTIALIASED);
+#endif
+    cvpi_vg_error_check();
+    vgCopyImage(half_img2, 0, 0, img2, 0, 0, img1_width, half_height, VG_FALSE);
+#if CVPI_CAREFUL == 1
       cvpi_vg_error_check();
-      if(img1_height > 1) {
-	half = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height-1,
-			     VG_IMAGE_QUALITY_NONANTIALIASED);
-	cvpi_vg_error_check();
-
-	half_c = vgCreateImage(CVPI_COLOR_SPACE, img1_width, img1_height-1,
-			       VG_IMAGE_QUALITY_NONANTIALIASED);
-	cvpi_vg_error_check();
-
-	max = img1_height-1;
-      } else {			/* 1 pixel high image */
-	max = 0;
-      }
+#endif
+    vgFinish();
+    half_added = cvpi_image_add(half_img1, half_img2, a, b, scale, bias);
+    if(half_added == VG_INVALID_HANDLE) {
+      cvpi_log_2("Failed to add top halves:", __func__, __LINE__);
+      BADSTATE = 1;
+      goto TAKEDOWN;
     }
-
-    if(img1_height > 1) {
-      /* add the two upper halves, do not optimize with != zero */
-      for(itter = 0; itter < max/2; ++itter) {
-	vgCopyImage(half, 0, 2*itter, img1, 0, itter, img1_width, 1, VG_FALSE);
-#if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
-#endif
-	vgCopyImage(half, 0, 2*itter+1, img2, 0, itter, img1_width, 1, VG_FALSE);
-#if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
-#endif
-	vgFinish();
-#if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
-#endif
-      }
-      /* add the current pixel with the one below it */
-      /* tiling mode does not matter since the last row is not returned */
-      vgConvolveNormal(half_c, half, 1, 2, 0, 0, kernel, scale, bias, VG_TILE_PAD);
+    vgCopyImage(output, 0, 0, half_added, 0, 0, img1_width, half_height, VG_FALSE);
 #if CVPI_CAREFUL == 1
       cvpi_vg_error_check();
 #endif
-      /* copy added upper half to output */
-      unsigned long i;
-      for(i = 0; i < max/2; ++i) {
-	vgCopyImage(output, 0, i, half_c, 0, 2*i, img1_width, 1, VG_FALSE);
+    vgDestroyImageSafe(half_added);
 #if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
+    cvpi_vg_error_check();
 #endif
-	vgFinish();
+    /* add bottom halves */
+    vgCopyImage(half_img1, 0, 0, img1, 0, half_height, img1_width, half_height, VG_FALSE);
 #if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
+    cvpi_vg_error_check();
 #endif
-      }
-      /* add the two lower halves */
-      for(; itter < max; ++itter) {
-	vgCopyImage(half, 0, 2*itter, img1, 0, itter, img1_width, 1, VG_FALSE);
+    vgCopyImage(half_img2, 0, 0, img2, 0, half_height, img1_width, half_height, VG_FALSE);
 #if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
+    cvpi_vg_error_check();
 #endif
-	vgCopyImage(half, 0, 2*itter+1, img2, 0, itter, img1_width, 1, VG_FALSE);
-#if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
-#endif
-	vgFinish();
-#if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
-#endif
-      }
-      vgConvolveNormal(half_c, half, 1, 2, 0, 0, kernel, scale, bias, VG_TILE_PAD);
-#if CVPI_CAREFUL == 1
-      cvpi_vg_error_check();
-#endif
-      /* copy added lower half to output */
-      unsigned long j;
-      for(j = 0; j < max/2; ++i, ++j) {
-	vgCopyImage(output, 0, i, half_c, 0, 2*j, img1_width, 1, VG_FALSE);
-#if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
-#endif
-	vgFinish();
-#if CVPI_CAREFUL == 1
-	cvpi_vg_error_check();
-#endif
-      }
+    half_added = cvpi_image_add(half_img1, half_img2, a, b, scale, bias);
+    if(half_added == VG_INVALID_HANDLE) {
+      cvpi_log_2("Failed to add bottom halves:", __func__, __LINE__);
+      BADSTATE = 1;
+      goto TAKEDOWN;
     }
-    /* for odd height images, add the last rows */
+    vgCopyImage(output, 0, half_height, half_added, 0, 0, img1_width, half_height, VG_FALSE);
+    vgFinish();
+    vgDestroyImageSafe(half_added);
+
+    /* if odd height, add last rows */
     if(img1_height % 2) {
-      vgCopyImage(last_row, 0, 0, img1, 0, img1_height-1, img1_width, 1, VG_FALSE);
+      l_row_img = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2, VG_IMAGE_QUALITY_NONANTIALIASED);
+      l_row_added = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2, VG_IMAGE_QUALITY_NONANTIALIASED);
+      vgCopyImage(l_row_img, 0, 0, img1, 0, img1_height-1, img1_width, 1, VG_FALSE);
 #if CVPI_CAREFUL == 1
       cvpi_vg_error_check();
 #endif
-      vgCopyImage(last_row, 0, 1, img2, 0, img1_height-1, img1_width, 1, VG_FALSE);
+      vgCopyImage(l_row_img, 0, 1, img2, 0, img1_height-1, img1_width, 1, VG_FALSE);
 #if CVPI_CAREFUL == 1
       cvpi_vg_error_check();
 #endif
-      vgConvolveNormal(last_row_c, last_row, 1, 2, 0, 0, kernel, scale, bias, VG_TILE_PAD);
+      vgConvolveNormal(l_row_added, l_row_img, 1, 2, 0, 0, kernel, scale, bias, VG_TILE_PAD);
 #if CVPI_CAREFUL == 1
       cvpi_vg_error_check();
 #endif
-      vgCopyImage(output, 0, img1_height-1, last_row_c, 0, 0, img1_width, 1, VG_FALSE);
+      vgCopyImage(output, 0, img1_height-1, l_row_added, 0, 0, img1_width, 1, VG_FALSE);
 #if CVPI_CAREFUL == 1
       cvpi_vg_error_check();
 #endif
       vgFinish();
-#if CVPI_CAREFUL == 1
-      cvpi_vg_error_check();
-#endif
     }
   } else {
     /* both images together fit in a single buffer */
 
     /* combine the two images */
     both = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2*img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#if CVPI_CAREFUL == 1
     cvpi_vg_error_check();
+#endif
     added = vgCreateImage(CVPI_COLOR_SPACE, img1_width, 2*img1_height, VG_IMAGE_QUALITY_NONANTIALIASED);
+#if CVPI_CAREFUL == 1
     cvpi_vg_error_check();
+#endif
     for(; itter < img1_height; ++itter) {
       vgCopyImage(both, 0, 2*itter, img1, 0, itter, img1_width, 1, VG_FALSE);
 #if CVPI_CAREFUL == 1
@@ -502,17 +476,21 @@ VGImage cvpi_image_add(const VGImage img1, const VGImage img2, VGshort a, VGshor
     }
   }
  TAKEDOWN:
-  vgDestroyImageSafe(half);
+  vgDestroyImageSafe(half_img1);
   cvpi_vg_error_takedown();
-  vgDestroyImageSafe(half_c);
+  vgDestroyImageSafe(half_img2);
   cvpi_vg_error_takedown();
-  vgDestroyImageSafe(last_row);
+  vgDestroyImageSafe(half_added);
   cvpi_vg_error_takedown();
-  vgDestroyImageSafe(last_row_c);
+  vgDestroyImageSafe(l_row_img);
+  cvpi_vg_error_takedown();
+  vgDestroyImageSafe(l_row_added);
   cvpi_vg_error_takedown();
   vgDestroyImageSafe(both);
   cvpi_vg_error_takedown();
   vgDestroyImageSafe(added);
+  cvpi_vg_error_takedown();
+  vgDestroyImageSafe(half_added);
   cvpi_vg_error_takedown();
   if(BADSTATE == 1) {
     vgDestroyImageSafe(output);

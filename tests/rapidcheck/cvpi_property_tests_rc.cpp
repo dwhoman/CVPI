@@ -17,6 +17,8 @@ extern "C" {
 #include <cmath>
 #include <random>
 
+
+bool failedOnce = false;
 const int MAX_WIDTH = 500;
 const int MAX_HEIGHT = 500;
 
@@ -145,20 +147,19 @@ bool compare_mats(cv::Mat &cvpi_mat, cv::Mat &ocv_mat) {
   if(cvpi_mat.rows == ocv_mat.rows) {
     if(cvpi_mat.cols == ocv_mat.cols) {
       success = std::equal(ocv_mat.begin<uint32_t>(), ocv_mat.end<uint32_t>(), cvpi_mat.begin<uint32_t>());
-      if(!success) {
+      if(!success  && !failedOnce) {
 	std::cerr << "Values differ" << std::endl;
 	std::cerr << "height: " << cvpi_mat.rows << " width: " << cvpi_mat.cols << std::endl;
-	std::cerr << "CVPI" << std::endl << cvpi_mat << std::endl << std::endl;
-
-	std::cerr << "OpenCV" << std::endl << ocv_mat << std::endl << std::endl;
+	//std::cerr << "CVPI" << std::endl << cvpi_mat << std::endl << std::endl;
+	//std::cerr << "OpenCV" << std::endl << ocv_mat << std::endl << std::endl;
       }
     } else {
       success = false;
-      std::cerr << "heights differ: " << cvpi_mat.cols << " " << ocv_mat.cols << std::endl;
+      // std::cerr << "heights differ: " << cvpi_mat.cols << " " << ocv_mat.cols << std::endl;
     }
   } else {
     success = false;
-    std::cerr << "widths differ: " << cvpi_mat.rows << " " << ocv_mat.rows << std::endl;
+    // std::cerr << "widths differ: " << cvpi_mat.rows << " " << ocv_mat.rows << std::endl;
   }
   return success;
 }
@@ -198,10 +199,12 @@ bool add_image_test_common(uint32_t *image_data_1, uint32_t *image_data_2, Dimen
   cv::Mat cvpi_sum_mat = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, cvpi_out);
 
   bool success = compare_mats(cvpi_sum_mat, cv_out);
-  if(!success) {
-    std::cerr << std::endl << cv_image_1 << std::endl << std::endl;
-    std::cerr << std::endl << cv_image_2 << std::endl << std::endl;
-  }
+  // if(!success && !failedOnce) {
+  //   std::cerr << std::endl << cvpi_sum_mat << std::endl << std::endl;
+  //   std::cerr << std::endl << cv_image_1 << std::endl << std::endl;
+  //   std::cerr << std::endl << cv_image_2 << std::endl << std::endl;
+  //   failedOnce = true;
+  // }
 
   if(session != NULL) {
     delete session;
@@ -213,74 +216,89 @@ bool add_image_test_common(uint32_t *image_data_1, uint32_t *image_data_2, Dimen
 }
 
 int main(int argc, char **argv) {
-  rc::check("add images large const", [](const BDimensions &dimensions, const unsigned int &val_1, const unsigned int &val_2) {
-      uint32_t image_pix_cnt = dimensions.width * dimensions.height;
-      uint32_t* image_data_1 = new uint32_t[image_pix_cnt];
-      uint32_t* image_data_2 = new uint32_t[image_pix_cnt];
-      std::fill_n(image_data_1, image_pix_cnt, val_1);
-      std::fill_n(image_data_2, image_pix_cnt, val_2);
+  int test_num = 0;
+  if(argc > 1) {
+    std::stringstream ss(argv[1]);
+    if((ss >> test_num).fail()) {
+      std::cerr << "Failed to select a check to run." << std::endl;
+      return 1;
+    }
+  }
+  if(test_num == 0 || test_num == 1) {
+    rc::check("add images large const", [](const BDimensions &dimensions, const unsigned int &val_1, const unsigned int &val_2) {
+	uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+	uint32_t* image_data_1 = new uint32_t[image_pix_cnt];
+	uint32_t* image_data_2 = new uint32_t[image_pix_cnt];
+	std::fill_n(image_data_1, image_pix_cnt, val_1);
+	std::fill_n(image_data_2, image_pix_cnt, val_2);
 
-      bool success = add_image_test_common(image_data_1, image_data_2, (Dimensions&)dimensions);
+	bool success = add_image_test_common(image_data_1, image_data_2, (Dimensions&)dimensions);
 
-      delete image_data_1;
-      delete image_data_2;
+	delete image_data_1;
+	delete image_data_2;
 
-      RC_ASSERT(success);
-    });
-  rc::check("add images large const small", [](const BDimensions &dimensions, const unsigned char &val_1, const unsigned char &val_2) {
-      uint32_t image_pix_cnt = dimensions.width * dimensions.height;
-      uint32_t* image_data_1 = new uint32_t[image_pix_cnt];
-      uint32_t* image_data_2 = new uint32_t[image_pix_cnt];
-      cvpi_pixel pix_img_1;
-      cvpi_pixel pix_img_2;
-      pix_img_1.channel[0] = val_1;
-      pix_img_1.channel[1] = val_1;
-      pix_img_1.channel[2] = val_1;
-      pix_img_1.channel[3] = val_1;
-      pix_img_2.channel[0] = val_2;
-      pix_img_2.channel[1] = val_2;
-      pix_img_2.channel[2] = val_2;
-      pix_img_2.channel[3] = val_2;
-      std::fill_n(image_data_1, image_pix_cnt, pix_img_1.all);
-      std::fill_n(image_data_2, image_pix_cnt, pix_img_2.all);
+	RC_ASSERT(success);
+      });
+  }
+  if(test_num == 0 || test_num == 2) {
+    rc::check("add images large const small", [](const BDimensions &dimensions, const unsigned char &val_1, const unsigned char &val_2) {
+	uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+	uint32_t* image_data_1 = new uint32_t[image_pix_cnt];
+	uint32_t* image_data_2 = new uint32_t[image_pix_cnt];
+	cvpi_pixel pix_img_1;
+	cvpi_pixel pix_img_2;
+	pix_img_1.channel[0] = val_1;
+	pix_img_1.channel[1] = val_1;
+	pix_img_1.channel[2] = val_1;
+	pix_img_1.channel[3] = val_1;
+	pix_img_2.channel[0] = val_2;
+	pix_img_2.channel[1] = val_2;
+	pix_img_2.channel[2] = val_2;
+	pix_img_2.channel[3] = val_2;
+	std::fill_n(image_data_1, image_pix_cnt, pix_img_1.all);
+	std::fill_n(image_data_2, image_pix_cnt, pix_img_2.all);
 
-      bool success = add_image_test_common(image_data_1, image_data_2, (Dimensions&)dimensions);
+	bool success = add_image_test_common(image_data_1, image_data_2, (Dimensions&)dimensions);
 
-      delete image_data_1;
-      delete image_data_2;
+	delete image_data_1;
+	delete image_data_2;
 
-      RC_ASSERT(success);
-    });
-  rc::check("add images large random", [](const BDimensions &dimensions, const unsigned int &seed_1,  const unsigned int &seed_2) {
-      uint32_t image_pix_cnt = dimensions.width * dimensions.height;
-      uint32_t* image_data_1 = new uint32_t[image_pix_cnt];
-      uint32_t* image_data_2 = new uint32_t[image_pix_cnt];
+	RC_ASSERT(success);
+      });
+  }
+  if(test_num == 0 || test_num == 3) {
+    rc::check("add images large random", [](const BDimensions &dimensions, const unsigned int &seed_1,  const unsigned int &seed_2) {
+	uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+	uint32_t* image_data_1 = new uint32_t[image_pix_cnt];
+	uint32_t* image_data_2 = new uint32_t[image_pix_cnt];
 
-      std::default_random_engine generator_1;
-      std::default_random_engine generator_2;
-      std::uniform_int_distribution<uint32_t> distribution(0,4294967295);
-      for(uint32_t i = 0; i < image_pix_cnt; ++i) {
-	image_data_1[i] = distribution(generator_1);
-	image_data_2[i] = distribution(generator_2);
-      }
+	std::default_random_engine generator_1;
+	std::default_random_engine generator_2;
+	std::uniform_int_distribution<uint32_t> distribution(0,4294967295);
+	for(uint32_t i = 0; i < image_pix_cnt; ++i) {
+	  image_data_1[i] = distribution(generator_1);
+	  image_data_2[i] = distribution(generator_2);
+	}
 
-      bool success = add_image_test_common(image_data_1, image_data_2, (Dimensions&)dimensions);
+	bool success = add_image_test_common(image_data_1, image_data_2, (Dimensions&)dimensions);
 
-      delete image_data_1;
-      delete image_data_2;
+	delete image_data_1;
+	delete image_data_2;
 
-      RC_ASSERT(success);
-    });
-
-  rc::check("add images small", [](const std::array<uint32_t, MAX_SIZE> &image_data_1,
-				   const std::array<uint32_t, MAX_SIZE> &image_data_2,
-				   const SDimensions &dimensions) {
-	      uint32_t image_pix_cnt = dimensions.width * dimensions.height;
-	      uint32_t* image_1 = new uint32_t[image_pix_cnt];
-	      uint32_t* image_2 = new uint32_t[image_pix_cnt];
-	      std::copy_n(image_data_1.begin(), image_pix_cnt, image_1);
-	      std::copy_n(image_data_2.begin(), image_pix_cnt, image_2);
-	      RC_ASSERT(add_image_test_common(image_1, image_2, (Dimensions&)dimensions));
-	    });
+	RC_ASSERT(success);
+      });
+  }
+  if(test_num == 0 || test_num == 4) {
+    rc::check("add images small", [](const std::array<uint32_t, MAX_SIZE> &image_data_1,
+				     const std::array<uint32_t, MAX_SIZE> &image_data_2,
+				     const SDimensions &dimensions) {
+		uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+		uint32_t* image_1 = new uint32_t[image_pix_cnt];
+		uint32_t* image_2 = new uint32_t[image_pix_cnt];
+		std::copy_n(image_data_1.begin(), image_pix_cnt, image_1);
+		std::copy_n(image_data_2.begin(), image_pix_cnt, image_2);
+		RC_ASSERT(add_image_test_common(image_1, image_2, (Dimensions&)dimensions));
+	      });
+  }
   return 0;
 }
