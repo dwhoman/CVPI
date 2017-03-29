@@ -15,6 +15,7 @@ extern "C" {
 #include <iostream>
 #include <utility>
 #include <cmath>
+#include <random>
 
 const int MAX_WIDTH = 500;
 const int MAX_HEIGHT = 500;
@@ -27,26 +28,43 @@ struct Dimensions {
   uint32_t height;
 };
 
+// small dimensions
+struct SDimensions : public Dimensions {};
+
+// big dimensions
+struct BDimensions : public Dimensions {};
+
 namespace rc {
   template<>
-  struct Arbitrary<Dimensions> {
-    static Gen<Dimensions> arbitrary() {
-      return gen::build<Dimensions>(gen::set(&Dimensions::width, gen::inRange(1, MAX_WIDTH + 1)),
-				    gen::set(&Dimensions::height, gen::inRange(1, MAX_HEIGHT + 1)));
+  struct Arbitrary<SDimensions> {
+    static Gen<SDimensions> arbitrary() {
+      return gen::build<SDimensions>(gen::set(&SDimensions::width, gen::inRange(1, MAX_WIDTH + 1)),
+				     gen::set(&SDimensions::height, gen::inRange(1, MAX_HEIGHT + 1)));
     };
   };
+  template<>
+  struct Arbitrary<BDimensions> {
+    static Gen<BDimensions> arbitrary() {
+      return gen::build<BDimensions>(gen::set(&BDimensions::width, gen::inRange(MAX_WIDTH + 1, EGL_CONFIG_MAX_WIDTH + 1)),
+				     gen::set(&BDimensions::height, gen::inRange(MAX_HEIGHT + 1, EGL_CONFIG_MAX_HEIGHT + 1)));
+    };
+  };
+  // template<>
+  // struct Arbitrary<cvpi_pixel> {
+  //   static Gen<cvpi_pixel> arbitrary() {
+  //     return gen::build<cvpi_pixel>(gen::set(&cvpi_pixel::all, gen::inRange(0, 4294967296)));
+  //   };
+  // };
 };
 
-int main(int argc, char **argv) {
-  rc::check("add images", [](const std::array<uint32_t, MAX_SIZE> &image_data_1,
-			     const std::array<uint32_t, MAX_SIZE> &image_data_2,
-			     const Dimensions &dimensions){
-	      //std::cout << "Setting up EGL" << std::endl;
-
-      // begin CVPI setup
-      cvpi_egl_settings settings = cvpi_egl_settings_create();
+class EGL_session {
+public:
+  cvpi_egl_settings settings = NULL;
+  cvpi_egl_instance instance = NULL;
+  EGL_session() {
+      settings = cvpi_egl_settings_create();
       if(settings == NULL) {
-	RC_FAIL("cvpi_egl_settings_create failed.");
+	throw std::runtime_error("cvpi_egl_settings_create failed.");
       }
       settings->surface_pixmap_create_function = cvpi_egl_surface_pixmap_native_creator;
       settings->surface_pixmap_destroy_function = cvpi_egl_surface_pixmap_native_destroyer;
@@ -103,75 +121,166 @@ int main(int argc, char **argv) {
 	  free(settings);
 	  settings = NULL;
 	}
-	RC_FAIL("Invalid EGL settings.");
+	throw std::runtime_error("Invalid EGL settings.");
       }
-      cvpi_egl_instance instance = cvpi_egl_instance_setup(settings);
+      instance = cvpi_egl_instance_setup(settings);
       if(instance == NULL) {
 	free(settings);
 	settings = NULL;
-	RC_FAIL("cvpi_egl_instance creation failed.");
+	throw std::runtime_error("cvpi_egl_instance creation failed.");
       }
-      // end CVPI setup
-      //std::cout << "EGL setup" << std::endl;
+  };
 
-      uint32_t *cvpi_out = malloc(CVPI_PIXEL_BYTES * dimensions.width * dimensions.height);
-      cv::Mat cv_out;
+  ~EGL_session() {
+    cvpi_egl_instance_takedown(instance);
+    if(settings != NULL) {
+      free(settings);
+      settings = NULL;
+    }
+  };
+};
 
-      VGImage image1 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
-      VGImage image2 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
-      vgFinish();
-      vgImageSubData(image1, &image_data_1, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
-      vgImageSubData(image2, &image_data_2, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
-      vgFinish();
-      VGImage cvpi_sum = cvpi_image_add(image1, image2, 1, 1, 1, 0);
-      vgFinish();
-      vgGetImageSubData(cvpi_sum, cvpi_out, CVPI_PIXEL_BYTES*dimensions.width, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
-      vgFinish();
-      vgDestroyImage(image1);
-      vgDestroyImage(image2);
-      vgDestroyImage(cvpi_sum);
+bool compare_mats(cv::Mat &cvpi_mat, cv::Mat &ocv_mat) {
+  bool success = false;
+  if(cvpi_mat.rows == ocv_mat.rows) {
+    if(cvpi_mat.cols == ocv_mat.cols) {
+      success = std::equal(ocv_mat.begin<uint32_t>(), ocv_mat.end<uint32_t>(), cvpi_mat.begin<uint32_t>());
+      if(!success) {
+	std::cerr << "Values differ" << std::endl;
+	std::cerr << "height: " << cvpi_mat.rows << " width: " << cvpi_mat.cols << std::endl;
+	std::cerr << "CVPI" << std::endl << cvpi_mat << std::endl << std::endl;
 
-      // OpenCV calculation
-      cv::Mat cv_image_1 = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, &image_data_1);
-      cv::Mat cv_image_2 = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, &image_data_2);
-
-      cv::add(cv_image_1, cv_image_2, cv_out);
-
-      cv::Mat cvpi_sum_mat = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, cvpi_out);
-
-      bool success = false;
-      if(cvpi_sum_mat.rows == cv_out.rows) {
-	if(cvpi_sum_mat.cols == cv_out.cols) {
-	  success = std::equal(cv_out.begin<uint32_t>(), cv_out.end<uint32_t>(), cvpi_sum_mat.begin<uint32_t>());
-	  if(!success) {
-	    std::cout << "sums differ" << std::endl;
-	    std::cout << "height: " << cvpi_sum_mat.rows << " width: " << cvpi_sum_mat.cols << std::endl;
-	    std::cout << "CVPI" << std::endl << cvpi_sum_mat << std::endl << std::endl;
-	    
-	    std::cout << "OpenCV" << std::endl << cv_out << std::endl << std::endl;
-	    
-	    std::cout << std::endl << cv_image_1 << std::endl << std::endl;
-	    
-	    std::cout << std::endl << cv_image_2 << std::endl << std::endl;
-	  }
-	} else {
-	  success = false;
-	  std::cout << "heights differ: " << cvpi_sum_mat.cols << " " << cv_out.cols << std::endl;
-	}
-      } else {
-	success = false;
-	std::cout << "widths differ: " << cvpi_sum_mat.rows << " " << cv_out.rows << std::endl;
+	std::cerr << "OpenCV" << std::endl << ocv_mat << std::endl << std::endl;
       }
+    } else {
+      success = false;
+      std::cerr << "heights differ: " << cvpi_mat.cols << " " << ocv_mat.cols << std::endl;
+    }
+  } else {
+    success = false;
+    std::cerr << "widths differ: " << cvpi_mat.rows << " " << ocv_mat.rows << std::endl;
+  }
+  return success;
+}
 
-      free(cvpi_out);
-      cvpi_out = NULL;
+bool add_image_test_common(uint32_t *image_data_1, uint32_t *image_data_2, Dimensions &dimensions) {
+  uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+  EGL_session *session = NULL;
+  try {
+    session = new EGL_session();
+  } catch(std::exception& e) {
+    RC_FAIL(e.what());
+  }
 
-      cvpi_egl_instance_takedown(instance);
-      if(settings != NULL) {
-	free(settings);
-	settings = NULL;
-      }
+  uint32_t *cvpi_out = new uint32_t[image_pix_cnt];
+  cv::Mat cv_out;
+
+  VGImage image1 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  VGImage image2 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  vgFinish();
+  vgImageSubData(image1, image_data_1, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
+  vgImageSubData(image2, image_data_2, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
+  vgFinish();
+  VGImage cvpi_sum = cvpi_image_add(image1, image2, 1, 1, 1, 0);
+  vgFinish();
+  vgGetImageSubData(cvpi_sum, cvpi_out, CVPI_PIXEL_BYTES*dimensions.width, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
+  vgFinish();
+  vgDestroyImage(image1);
+  vgDestroyImage(image2);
+  vgDestroyImage(cvpi_sum);
+
+  // OpenCV calculation
+  cv::Mat cv_image_1 = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, image_data_1);
+  cv::Mat cv_image_2 = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, image_data_2);
+
+  cv::add(cv_image_1, cv_image_2, cv_out);
+
+  cv::Mat cvpi_sum_mat = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, cvpi_out);
+
+  bool success = compare_mats(cvpi_sum_mat, cv_out);
+  if(!success) {
+    std::cerr << std::endl << cv_image_1 << std::endl << std::endl;
+    std::cerr << std::endl << cv_image_2 << std::endl << std::endl;
+  }
+
+  if(session != NULL) {
+    delete session;
+  }
+
+  delete cvpi_out;
+
+  return success;
+}
+
+int main(int argc, char **argv) {
+  rc::check("add images large const", [](const BDimensions &dimensions, const unsigned int &val_1, const unsigned int &val_2) {
+      uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+      uint32_t* image_data_1 = new uint32_t[image_pix_cnt];
+      uint32_t* image_data_2 = new uint32_t[image_pix_cnt];
+      std::fill_n(image_data_1, image_pix_cnt, val_1);
+      std::fill_n(image_data_2, image_pix_cnt, val_2);
+
+      bool success = add_image_test_common(image_data_1, image_data_2, (Dimensions&)dimensions);
+
+      delete image_data_1;
+      delete image_data_2;
+
       RC_ASSERT(success);
     });
+  rc::check("add images large const small", [](const BDimensions &dimensions, const unsigned char &val_1, const unsigned char &val_2) {
+      uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+      uint32_t* image_data_1 = new uint32_t[image_pix_cnt];
+      uint32_t* image_data_2 = new uint32_t[image_pix_cnt];
+      cvpi_pixel pix_img_1;
+      cvpi_pixel pix_img_2;
+      pix_img_1.channel[0] = val_1;
+      pix_img_1.channel[1] = val_1;
+      pix_img_1.channel[2] = val_1;
+      pix_img_1.channel[3] = val_1;
+      pix_img_2.channel[0] = val_2;
+      pix_img_2.channel[1] = val_2;
+      pix_img_2.channel[2] = val_2;
+      pix_img_2.channel[3] = val_2;
+      std::fill_n(image_data_1, image_pix_cnt, pix_img_1.all);
+      std::fill_n(image_data_2, image_pix_cnt, pix_img_2.all);
+
+      bool success = add_image_test_common(image_data_1, image_data_2, (Dimensions&)dimensions);
+
+      delete image_data_1;
+      delete image_data_2;
+
+      RC_ASSERT(success);
+    });
+  rc::check("add images large random", [](const BDimensions &dimensions, const unsigned int &seed_1,  const unsigned int &seed_2) {
+      uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+      uint32_t* image_data_1 = new uint32_t[image_pix_cnt];
+      uint32_t* image_data_2 = new uint32_t[image_pix_cnt];
+
+      std::default_random_engine generator_1;
+      std::default_random_engine generator_2;
+      std::uniform_int_distribution<uint32_t> distribution(0,4294967295);
+      for(uint32_t i = 0; i < image_pix_cnt; ++i) {
+	image_data_1[i] = distribution(generator_1);
+	image_data_2[i] = distribution(generator_2);
+      }
+
+      bool success = add_image_test_common(image_data_1, image_data_2, (Dimensions&)dimensions);
+
+      delete image_data_1;
+      delete image_data_2;
+
+      RC_ASSERT(success);
+    });
+
+  rc::check("add images small", [](const std::array<uint32_t, MAX_SIZE> &image_data_1,
+				   const std::array<uint32_t, MAX_SIZE> &image_data_2,
+				   const SDimensions &dimensions) {
+	      uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+	      uint32_t* image_1 = new uint32_t[image_pix_cnt];
+	      uint32_t* image_2 = new uint32_t[image_pix_cnt];
+	      std::copy_n(image_data_1.begin(), image_pix_cnt, image_1);
+	      std::copy_n(image_data_2.begin(), image_pix_cnt, image_2);
+	      RC_ASSERT(add_image_test_common(image_1, image_2, (Dimensions&)dimensions));
+	    });
   return 0;
 }
