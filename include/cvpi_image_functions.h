@@ -122,18 +122,19 @@ extern "C" {
   extern const VGshort cvpi_filter_roberts_cross_x[4];
   extern const VGshort cvpi_filter_roberts_cross_y[4];
 
-  /*!
-    Convert YUYV (YUV 4:2:2) to YUVA with eight bits per channel, Y
-    being the least significant byte so that writing to a file will
-    produce YUVA in least significant byte first order. YUVA is mapped
-    as VUYA to OpenVG's RGBA data structure. The input image is
-    normally an image returned by a web camera and read in by
-    vgCreateImage with CVPI_COLOR_SPACE for the format parameter. The
-    input yuyv_image's width is half that of the output image's. The
-    width and height are taken from YUYV_IMAGE. The function returns
-    VG_INVALID_HANDLE if an error occurs. */
+  /*!  Convert YUYV (YUV 4:2:2) to YUVA with eight bits per channel, Y being the
+    least significant byte so that writing to a file will produce YUVA in least
+    significant byte first order. The alpha channel is set to 255. YUVA is
+    mapped as VUYA to OpenVG's RGBA data structure. The input image is normally
+    an image returned by a web camera and read in by vgCreateImage with
+    CVPI_COLOR_SPACE for the format parameter. The input yuyv_image's width is
+    half that of the output image's. The width and height are taken from
+    YUYV_IMAGE. The function returns VG_INVALID_HANDLE if an error occurs. */
   VGImage cvpi_yuyv2yuva(const VGImage yuyv_image);
 
+  /* Allows the user to specify a different value for alpha, 0 to 255. */
+  VGImage cvpi_yuyv2yuva_alpha(const VGImage yuyv_image, const VGubyte alpha);
+    
   /*!
     Add two image matrices each scaled by `a' and `b' respectively; for
     each pixel $C_{i,j} = s\cdot(a\cdot A_{i,j} + b\cdot

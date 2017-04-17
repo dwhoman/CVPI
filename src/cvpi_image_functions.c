@@ -201,6 +201,10 @@ const VGshort cvpi_filter_roberts_cross_x[4] = {0,1,
   } while(0)
 
 VGImage cvpi_yuyv2yuva(const VGImage yuyv_image) {
+  return cvpi_yuyv2yuva_alpha(yuyv_image, 255);
+}
+
+VGImage cvpi_yuyv2yuva_alpha(const VGImage yuyv_image, const VGubyte alpha) {
 #define TAKEDOWN cvpi_yuyv2yuva_takedown
   int BADSTATE = 0;
   VGImage mod_image_1 = VG_INVALID_HANDLE;
@@ -216,20 +220,20 @@ VGImage cvpi_yuyv2yuva(const VGImage yuyv_image) {
   cvpi_vg_error_check();
 #endif
   const VGfloat yuyv2yuva_conversion_1[20] = {
-  0, 0, 0, 1,
+  0, 0, 0, 0,
   0, 1, 0, 0,
   0, 0, 1, 0,
   1, 0, 0, 0,
 
-  0, 0, 0, 1
+  0, 0, 0, alpha
   };
   const VGfloat yuyv2yuva_conversion_2[20] = {
   0, 0, 1, 0,
   0, 1, 0, 0,
-  0, 0, 0, 1,
+  0, 0, 0, 0,
   1, 0, 0, 0,
 
-  0, 0, 0, 1
+  0, 0, 0, alpha
   };
 
   VGint yuva_width = yuyv_width*2;
@@ -240,11 +244,11 @@ VGImage cvpi_yuyv2yuva(const VGImage yuyv_image) {
   mod_image_2 = vgCreateImage(CVPI_COLOR_SPACE, yuyv_width, height, VG_IMAGE_QUALITY_NONANTIALIASED);
   cvpi_vg_error_check();
 
-  vgColorMatrix(mod_image_1, yuyv_image, yuyv2yuva_conversion_1);
+  vgColorMatrixNormal(mod_image_1, yuyv_image, yuyv2yuva_conversion_1);
 #if CVPI_CAREFUL == 1
   cvpi_vg_error_check();
 #endif
-  vgColorMatrix(mod_image_2, yuyv_image, yuyv2yuva_conversion_2);
+  vgColorMatrixNormal(mod_image_2, yuyv_image, yuyv2yuva_conversion_2);
 #if CVPI_CAREFUL == 1
   cvpi_vg_error_check();
 #endif
