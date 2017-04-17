@@ -262,6 +262,60 @@ bool add_image_test_common(std::string name, uint32_t *image_data_1, uint32_t *i
   return success;
 }
 
+bool convolution_test_common(std::string name, uint32_t *image_data, Dimensions dimensions) {
+  EGL_session *session = NULL;
+  try {
+    session = new EGL_session();
+  } catch(std::exception& e) {
+    RC_FAIL(e.what());
+  }
+  uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+  uint32_t* image = new uint32_t[image_pix_cnt];
+  VGImage vg_convolved, vg_in;
+  cv::Mat cv_convolved, cv_in, vg_mat;
+  uint32_t *cvpi_out = new uint32_t[image_pix_cnt];
+  // CVPI test
+  vg_in = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  vg_convolved = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  vgFinish();
+  vgImageSubData(vg_in, image, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
+  vgFinish();
+  const VGshort vg_kernel[9] = {1,1,1,1,1,1,1,1,1};
+  TIME_IT(CVPI_TEST + name, dimensions.width, dimensions.height, TIME_IT_ITTERATIONS,
+	  vgConvolveNoShift(vg_convolved, vg_in, 3, 3, vg_kernel, 1, 0, VG_TILE_REFLECT);
+	  vgFinish();
+	  );
+  vgGetImageSubData(vg_convolved, cvpi_out, CVPI_PIXEL_BYTES*dimensions.width, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
+  vgFinish();
+  vgDestroyImage(vg_convolved);
+  vgDestroyImage(vg_in);
+  vg_mat = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, cvpi_out);
+
+  // OpenCV calculation
+  cv_in = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, image);
+  cv::Mat kernel = cv::Mat::ones(3, 3, CV_32F);	  
+  TIME_IT(CPU_TEST + name, dimensions.width, dimensions.height, TIME_IT_ITTERATIONS,
+	  cv::filter2D(cv_in, cv_convolved, CV_8UC4, kernel, cv::Point(-1, -1), 0, cv::BORDER_REFLECT););
+
+  bool success = compare_mats(vg_mat, cv_convolved);
+  if(!success) {
+    if(PRINT_DIMS) {
+      printf("dims: %d x %d\n", dimensions.width, dimensions.height);
+    }
+    if(PRINT_IMAGES && !PRINTED) {
+      std::cerr << std::endl << cv_in << std::endl << std::endl;
+      std::cerr << std::endl << vg_mat << std::endl << std::endl;
+      std::cerr << std::endl << cv_convolved << std::endl << std::endl;
+      PRINTED = true;
+    }
+  }
+  if(session != NULL) {
+    delete session;
+  }
+  delete cvpi_out;
+  return success;
+}
+
 int main(int argc, char **argv) {
   // Options:
   // -t [number] : get execution times.  Repeat profiled function <number> times, default 10.
@@ -447,6 +501,37 @@ int main(int argc, char **argv) {
 	  delete yuva_data_cvpi;
 	
 	  RC_ASSERT(cmp == 0);
+	});
+      reset();
+    }
+
+    if(test_num == 0 || test_num == 6) {
+      rc::check("convolution_speed_small", [](const std::array<uint32_t, MAX_SIZE> &image_data, const SDimensions &dimensions) {
+	  std::string name = "convolution_speed_small";
+	  uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+	  uint32_t* image = new uint32_t[image_pix_cnt];
+	  std::copy_n(image_data.begin(), image_pix_cnt, image);
+
+	  bool success = convolution_test_common("convolution_speed_small", image, (Dimensions&)dimensions);
+	  delete image;
+	  RC_ASSERT(success);
+	});
+      reset();
+    }
+    if(test_num == 0 || test_num == 7) {
+      rc::check("convolution_speed_large", [](const BDimensions &dimensions, const unsigned int &seed) {
+	  uint32_t image_pix_cnt = dimensions.width * dimensions.height;
+	  uint32_t* image_data = new uint32_t[image_pix_cnt];
+	  std::mt19937 generator(seed);
+	  std::uniform_int_distribution<uint32_t> distribution(0,UINT32_MAX);
+	  for(uint32_t i = 0; i < image_pix_cnt; ++i) {
+	    image_data[i] = distribution(generator);
+	  }
+
+	  bool success = convolution_test_common("convolution_speed_large", image_data, (Dimensions&)dimensions);
+	  
+	  delete image_data;
+	  RC_ASSERT(success);
 	});
       reset();
     }
