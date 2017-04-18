@@ -3877,3 +3877,19 @@ cvpi_pixel* cvpi_image2argb(const VGImage image) {
   return data;
 #undef TAKEDOWN
 }
+
+
+void cvpi_image_add_asm(uint32_t* output, uint32_t* image1, uint32_t* image2, int size) {
+  /* uint32_t a,b,c; */
+  /* while(size != 0) { */
+  /*   --size; */
+  /*   b = image1[size]; */
+  /*   c = image2[size]; */
+  /*   asm("uqadd8 %0, %1, %2\n\t" :"=r"(a) :"r"(b), "r"(c)); */
+  /*   output[size] = a; */
+  /* } */
+  while(size != 0) {
+    --size;
+    asm("uqadd8 %0, %1, %2\n\t" :"=r"(output[size]) :"r"(image1[size]), "r"(image2[size]));
+  }
+}

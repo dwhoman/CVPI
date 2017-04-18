@@ -437,6 +437,7 @@ extern "C" {
      an error occurs. */
   cvpi_pixel* cvpi_image2argb(const VGImage image);
 
+  void cvpi_image_add_asm(uint32_t* output, uint32_t* image1, uint32_t* image2, int size);
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

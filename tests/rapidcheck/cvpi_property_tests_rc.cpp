@@ -210,32 +210,35 @@ bool compare_mats(cv::Mat &cvpi_mat, cv::Mat &ocv_mat) {
 
 bool add_image_test_common(std::string name, uint32_t *image_data_1, uint32_t *image_data_2, Dimensions &dimensions) {
   uint32_t image_pix_cnt = dimensions.width * dimensions.height;
-  EGL_session *session = NULL;
-  try {
-    session = new EGL_session();
-  } catch(std::exception& e) {
-    RC_FAIL(e.what());
-  }
+  // EGL_session *session = NULL;
+  // try {
+  //   session = new EGL_session();
+  // } catch(std::exception& e) {
+  //   RC_FAIL(e.what());
+  // }
 
   uint32_t *cvpi_out = new uint32_t[image_pix_cnt];
   cv::Mat cv_out, cv_image_1, cv_image_2, cvpi_sum_mat;
-  VGImage image1, image2, cvpi_sum;
+  //VGImage image1, image2, cvpi_sum;
 
-  image1 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
-  image2 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
-  vgFinish();
-  vgImageSubData(image1, image_data_1, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
-  vgImageSubData(image2, image_data_2, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
-  vgFinish();
+  //image1 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  //image2 = vgCreateImage(CVPI_COLOR_SPACE, dimensions.width, dimensions.height,VG_IMAGE_QUALITY_NONANTIALIASED);
+  // vgFinish();
+  // vgImageSubData(image1, image_data_1, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
+  // vgImageSubData(image2, image_data_2, dimensions.width*CVPI_PIXEL_BYTES, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
+  // vgFinish();
+  // TIME_IT(CVPI_TEST + name, dimensions.width, dimensions.height, TIME_IT_ITTERATIONS,
+  // 	  cvpi_sum = cvpi_image_add(image1, image2, 1, 1, 1, 0);
+  // 	  vgFinish();
+  // 	  vgGetImageSubData(cvpi_sum, cvpi_out, CVPI_PIXEL_BYTES*dimensions.width, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
+  // 	  vgFinish();
+  // 	  vgDestroyImage(cvpi_sum);
+  // 	  );
+  // vgDestroyImage(image1);
+  // vgDestroyImage(image2);
+
   TIME_IT(CVPI_TEST + name, dimensions.width, dimensions.height, TIME_IT_ITTERATIONS,
-	  cvpi_sum = cvpi_image_add(image1, image2, 1, 1, 1, 0);
-	  vgFinish();
-	  vgGetImageSubData(cvpi_sum, cvpi_out, CVPI_PIXEL_BYTES*dimensions.width, CVPI_COLOR_SPACE, 0, 0, dimensions.width, dimensions.height);
-	  vgFinish();
-	  vgDestroyImage(cvpi_sum);
-	  );
-  vgDestroyImage(image1);
-  vgDestroyImage(image2);
+	  cvpi_image_add_asm(cvpi_out, image_data_1, image_data_2, image_pix_cnt););
 
   // OpenCV calculation
   cv_image_1 = cv::Mat(dimensions.height, dimensions.width, CV_8UC4, image_data_1);
@@ -253,9 +256,9 @@ bool add_image_test_common(std::string name, uint32_t *image_data_1, uint32_t *i
     PRINTED = true;
   }
 
-  if(session != NULL) {
-    delete session;
-  }
+  // if(session != NULL) {
+  //   delete session;
+  // }
 
   delete cvpi_out;
 
