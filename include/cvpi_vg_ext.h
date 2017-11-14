@@ -36,11 +36,12 @@ extern "C" {
   /* Map the VGErrorCode to a descriptive string. */
   char* cvpi_vg_error_string(VGErrorCode error);
 
-  /* The vgConvolve and vgSeparableConvolve bias parameter is a floating
-     point value between -1 and 1. The GPU operates on 8-bit unsigned
-     integer values. vgConvolveNormal uses a short between -255 and 255
-     for the bias so that the user does not have to do the conversion
-     from integer to float. */
+  /* The vgConvolve and vgSeparableConvolve bias parameter is a floating point
+     value between -1 and 1. The GPU operates on 8-bit unsigned integer
+     values. vgConvolveNormal expects the bias parameter to be a value between
+     -255 and 255, inclusive.  When vgConvolve adds the bias, pixels are scaled
+     from 0 to 1 rather than 0 to 255. vgConvolveNormal saves the user from
+     having to do the mapping. */
   void vgConvolveNormal(VGImage dst, VGImage src,
 			VGint kernelWidth, VGint kernelHeight,
 			VGint shiftX, VGint shiftY,

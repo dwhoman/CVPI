@@ -1,1 +1,0 @@
-/usr/bin/gcc  -fPIC -g -std=gnu99   -shared -Wl,-soname,libcvpi.so -o libcvpi.so CMakeFiles/cvpi.dir/cvpi_base.c.o CMakeFiles/cvpi.dir/cvpi_egl_config.c.o CMakeFiles/cvpi.dir/cvpi_image_functions.c.o CMakeFiles/cvpi.dir/cvpi_image_headers.c.o CMakeFiles/cvpi.dir/cvpi_vg_ext.c.o -L/opt/vc/lib -lm -lbcm_host -lEGL -lGLESv2 -Wl,-rpath,/opt/vc/lib 

@@ -63,7 +63,9 @@ endif()
 
 add_subdirectory(src lib)
 add_subdirectory(src-aux lib-aux)
-add_subdirectory(tests)
+#add_subdirectory(tests)
+add_subdirectory(tests/hypothesis)
+add_subdirectory(tests/rapidcheck)
 
 #add_library(chicken-ffi openvg-chicken.scd cvpi-chicken.scd)
 #target_link_libraries(chicken-ffi EGL GLESv2 bcm_host)

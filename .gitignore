@@ -10,6 +10,7 @@
 .*
 !.gitignore
 *.o
+*.so
 test/test_images_tmp/*
 test/cvpi_image_mean_test_files/*
 test/valgrind.txt
@@ -48,3 +49,12 @@ tests/cvpi_tests
 tests/khr_lock_surface_test
 tests/motion_detect_data
 tests/test_images_tmp
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
